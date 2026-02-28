@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
 import { fetchProducts, fetchTags, fetchFlags, fetchCustomFields, fromDbProduct } from "../lib/supabase";
-import SupabaseStatus from "../lib/SupabaseStatus";
 
 const INR = (amount) => `₹${Number(amount).toLocaleString("en-IN")}`;
 const C = { dark: "#1a1a2e", gold: "#f59e0b", bg: "#f8f7f4", muted: "#6b7280", border: "#e5e7eb", red: "#ef4444", green: "#10b981", purple: "#7c3aed" };
@@ -1977,7 +1976,6 @@ export default function RentCircle() {
 
   return (
     <>
-      <SupabaseStatus />
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
