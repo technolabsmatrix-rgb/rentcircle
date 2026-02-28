@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { fetchProducts, fetchTags, fetchFlags, fetchCustomFields, fetchPlans, fromDbProduct, subscribeTo } from "../lib/supabase";
+import { fetchProducts, fetchTags, fetchFlags, fetchCustomFields, fetchPlans, fromDbProduct, subscribeTo, supabase, onAuthChange } from "../lib/supabase";
 
 const INR = (amount) => `₹${Number(amount).toLocaleString("en-IN")}`;
 const C = { dark: "#1a1a2e", gold: "#f59e0b", bg: "#f8f7f4", muted: "#6b7280", border: "#e5e7eb", red: "#ef4444", green: "#10b981", purple: "#7c3aed" };
@@ -100,7 +100,28 @@ function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
     { name: "Facebook", bg: "#1877F2", color: "#fff", border: "none", logo: <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> },
   ];
 
-  const handleSocial = (p) => { setLoading(p); setTimeout(() => { setLoading(null); onLogin({ name: `${p} User`, email: `user@${p.toLowerCase()}.com`, avatar: p[0], subscription: null, emailVerified: true, phoneVerified: true }); }, 1400); };
+  // ── Real Supabase OAuth ───────────────────────────────────
+  const handleSocial = async (providerName) => {
+    setLoading(providerName);
+    setErrors({});
+    try {
+      const provider = providerName.toLowerCase(); // "google" | "facebook"
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin, // returns to your site after OAuth
+        },
+      });
+      if (error) {
+        setErrors({ social: error.message });
+        setLoading(null);
+      }
+      // On success Supabase redirects the browser — no code needed here
+    } catch (e) {
+      setErrors({ social: e.message });
+      setLoading(null);
+    }
+  };
 
   const validate = () => {
     const errs = {};
@@ -234,10 +255,15 @@ function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
         <p style={{ color: C.muted, fontSize: "0.85rem", marginBottom: "1.5rem" }}>{mode === "login" ? "Sign in to continue renting" : "Join 5,510+ happy renters"}</p>
 
         {socialProviders.map(p => (
-          <button key={p.name} disabled={!!loading} onClick={() => handleSocial(p.name)} style={{ width: "100%", border: p.border, borderRadius: "12px", padding: "0.8rem 1rem", background: p.bg, color: p.color, cursor: "pointer", fontWeight: 700, fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", fontFamily: "'Outfit', sans-serif", marginBottom: "0.6rem", opacity: loading === p.name ? 0.6 : 1, boxShadow: "0 1px 6px rgba(0,0,0,0.1)" }}>
-            {loading === p.name ? "⏳" : <>{p.logo}<span>Continue with {p.name}</span></>}
+          <button key={p.name} disabled={!!loading} onClick={() => handleSocial(p.name)} style={{ width: "100%", border: p.border, borderRadius: "12px", padding: "0.8rem 1rem", background: p.bg, color: p.color, cursor: loading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", fontFamily: "'Outfit', sans-serif", marginBottom: "0.6rem", opacity: loading === p.name ? 0.6 : 1, boxShadow: "0 1px 6px rgba(0,0,0,0.1)" }}>
+            {loading === p.name ? <><span style={{ animation: "rc-spin 0.8s linear infinite", display: "inline-block" }}>⏳</span> Redirecting to {p.name}…</> : <>{p.logo}<span>Continue with {p.name}</span></>}
           </button>
         ))}
+        {errors.social && (
+          <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "0.65rem 1rem", marginBottom: "0.75rem", color: "#dc2626", fontSize: "0.83rem" }}>
+            ⚠ {errors.social}
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", margin: "1rem 0", color: C.muted, fontSize: "0.8rem" }}>
           <div style={{ flex: 1, height: "1px", background: C.border }} /><span>or use email</span><div style={{ flex: 1, height: "1px", background: C.border }} />
         </div>
@@ -1466,6 +1492,28 @@ export default function RentCircle() {
       })
       .catch(() => {})
 
+    // ── OAuth session: fires when user returns after Google/Facebook login ──
+    const { data: { subscription: authSub } } = onAuthChange((event, session) => {
+      console.log('🔐 Auth event:', event, session?.user?.email)
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        const u = session.user
+        const displayName = u.user_metadata?.full_name || u.user_metadata?.name || u.email.split('@')[0]
+        setUser({
+          name: displayName,
+          email: u.email,
+          avatar: displayName[0].toUpperCase(),
+          subscription: null,
+          emailVerified: !!u.email_confirmed_at,
+          phoneVerified: false,
+          supabaseId: u.id,
+        })
+        setAuthOpen(false)
+      }
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+      }
+    })
+
     // ── Realtime: re-fetch full list on any change ────────
     const unsubs = [
       subscribeTo('plans', () =>
@@ -1494,7 +1542,10 @@ export default function RentCircle() {
     ]
 
     // Cleanup on unmount
-    return () => unsubs.forEach(fn => fn())
+    return () => {
+      authSub?.unsubscribe()
+      unsubs.forEach(fn => fn())
+    }
   }, []);
 
   const showNotif = (msg, type = "success") => { setNotif({ msg, type }); setTimeout(() => setNotif(null), 3000); };
