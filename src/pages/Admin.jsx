@@ -188,16 +188,23 @@ function AdminLogin({ onLogin }) {
   const [showPass, setShowPass] = useState(false);
   const [focused, setFocused] = useState(null);
 
+  const ADMIN_EMAIL    = import.meta.env.VITE_ADMIN_EMAIL
+  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD
+
   const handleLogin = () => {
     setError("");
     if (!email || !password) { setError("Please fill in all fields."); return; }
+    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+      setError("Admin credentials not configured. Add VITE_ADMIN_EMAIL and VITE_ADMIN_PASSWORD to your environment variables.");
+      return;
+    }
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      if (email === "admin@rentcircle.in" && password === "admin123") {
+      if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
         onLogin({ name: "Admin", email });
       } else {
-        setError("Invalid credentials. Try admin@rentcircle.in / admin123");
+        setError("Invalid email or password.");
       }
     }, 1200);
   };
@@ -237,7 +244,7 @@ function AdminLogin({ onLogin }) {
           {error && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", padding: "0.75rem 1rem", marginBottom: "1rem", color: COLORS.red, fontSize: "0.85rem" }}>⚠ {error}</div>}
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ display: "block", color: COLORS.muted, fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</label>
-            <input style={inp("email")} type="email" placeholder="admin@rentcircle.in" value={email} onChange={e => setEmail(e.target.value)} onFocus={() => setFocused("email")} onBlur={() => setFocused(null)} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+            <input style={inp("email")} type="email" placeholder="Enter admin email" value={email} onChange={e => setEmail(e.target.value)} onFocus={() => setFocused("email")} onBlur={() => setFocused(null)} onKeyDown={e => e.key === "Enter" && handleLogin()} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
             <label style={{ display: "block", color: COLORS.muted, fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Password</label>
@@ -249,11 +256,6 @@ function AdminLogin({ onLogin }) {
           <button onClick={handleLogin} disabled={loading} style={{ width: "100%", background: loading ? "rgba(249,115,22,0.5)" : COLORS.accent, border: "none", borderRadius: "12px", padding: "1rem", color: "#fff", cursor: loading ? "not-allowed" : "pointer", fontWeight: 800, fontSize: "1rem", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}>
             {loading ? <><span style={{ animation: "spin 0.8s linear infinite", display: "inline-block" }}>⏳</span> Authenticating...</> : "Sign In to Dashboard →"}
           </button>
-          <div style={{ marginTop: "1.5rem", padding: "0.9rem 1rem", background: COLORS.accentLight, borderRadius: "10px", border: `1px solid ${COLORS.border}` }}>
-            <div style={{ color: COLORS.muted, fontSize: "0.75rem", fontWeight: 700, marginBottom: "0.4rem", textTransform: "uppercase" }}>Demo Credentials</div>
-            <div style={{ color: COLORS.text, fontSize: "0.85rem", fontFamily: "monospace" }}>📧 admin@rentcircle.in</div>
-            <div style={{ color: COLORS.text, fontSize: "0.85rem", fontFamily: "monospace" }}>🔑 admin123</div>
-          </div>
         </div>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
