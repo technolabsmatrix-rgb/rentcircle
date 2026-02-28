@@ -61,9 +61,9 @@ const initialProducts = [
 ];
 
 const initialPlans = [
-  { id: 1, name: "Starter", price: 749, subscribers: 1240, revenue: 928600, rentals: 5, features: ["5 rentals/month", "Standard delivery", "Email support", "Basic insurance"], active: true },
-  { id: 2, name: "Pro", price: 2399, subscribers: 3850, revenue: 9236150, rentals: -1, features: ["Unlimited rentals", "Priority delivery", "24/7 support", "Full insurance"], active: true },
-  { id: 3, name: "Business", price: 6599, subscribers: 420, revenue: 2771580, rentals: -1, features: ["Team accounts (5)", "Same-day delivery", "Dedicated manager", "API access"], active: true },
+  { name: "Starter",  price: 749,  subscribers: 1240, revenue: 928600,   rentals: 5,  features: ["5 rentals/month", "Standard delivery", "Email support", "Basic insurance"], active: true },
+  { name: "Pro",      price: 2399, subscribers: 3850, revenue: 9236150,  rentals: -1, features: ["Unlimited rentals", "Priority delivery", "24/7 support", "Full insurance"], active: true },
+  { name: "Business", price: 6599, subscribers: 420,  revenue: 2771580,  rentals: -1, features: ["Team accounts (5)", "Same-day delivery", "Dedicated manager", "API access"], active: true },
 ];
 
 const initialUsers = [

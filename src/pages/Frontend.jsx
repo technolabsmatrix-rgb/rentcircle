@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { fetchProducts, fetchTags, fetchFlags, fetchCustomFields, fromDbProduct } from "../lib/supabase";
+import { fetchProducts, fetchTags, fetchFlags, fetchCustomFields, fetchPlans, fromDbProduct, subscribeTo } from "../lib/supabase";
 
 const INR = (amount) => `₹${Number(amount).toLocaleString("en-IN")}`;
 const C = { dark: "#1a1a2e", gold: "#f59e0b", bg: "#f8f7f4", muted: "#6b7280", border: "#e5e7eb", red: "#ef4444", green: "#10b981", purple: "#7c3aed" };
@@ -19,11 +19,32 @@ const defaultProducts = [
 ];
 const categories = ["All", "Electronics", "Sports", "Outdoor", "Gaming", "Tools", "Fashion"];
 const PRODUCT_EMOJIS = ["📷","🚁","🚵","⛺","💻","🔭","🏄","🎮","🛶","🎸","🏋️","🎨","🔨","🚗","🛴","🎯","🏕️","📺","🎻","🧳"];
-const plans = [
-  { id: "starter", name: "Starter", price: 749, color: "#e8f4fd", accent: "#2563eb", listingLimit: 3, features: ["5 rentals/month", "List up to 3 products", "Standard delivery", "Email support", "Basic insurance"] },
-  { id: "pro", name: "Pro", price: 2399, color: "#fdf4e8", accent: "#d97706", listingLimit: 20, features: ["Unlimited rentals", "List up to 20 products", "Priority delivery", "24/7 support", "Full insurance", "Early access"], popular: true },
-  { id: "business", name: "Business", price: 6599, color: "#f0fdf4", accent: "#16a34a", listingLimit: 999, features: ["Team accounts (5)", "Unlimited product listings", "Same-day delivery", "Dedicated manager", "Premium insurance", "API access"] },
+// UI config per plan (colors, accent, listingLimit) — merged with live DB data
+const PLAN_UI = {
+  starter:  { color: "#e8f4fd", accent: "#2563eb", listingLimit: 3,   popular: false },
+  pro:      { color: "#fdf4e8", accent: "#d97706", listingLimit: 20,  popular: true  },
+  business: { color: "#f0fdf4", accent: "#16a34a", listingLimit: 999, popular: false },
+};
+const DEFAULT_PLANS = [
+  { id: "starter",  name: "Starter",  price: 749,  features: ["5 rentals/month","List up to 3 products","Standard delivery","Email support","Basic insurance"],                                   ...PLAN_UI.starter  },
+  { id: "pro",      name: "Pro",      price: 2399, features: ["Unlimited rentals","List up to 20 products","Priority delivery","24/7 support","Full insurance","Early access"],                  ...PLAN_UI.pro      },
+  { id: "business", name: "Business", price: 6599, features: ["Team accounts (5)","Unlimited product listings","Same-day delivery","Dedicated manager","Premium insurance","API access"],        ...PLAN_UI.business },
 ];
+// Maps DB plan row → frontend plan shape (merges live price/features with UI config)
+function dbPlanToFrontend(dbPlan) {
+  const key = dbPlan.name?.toLowerCase();
+  const ui  = PLAN_UI[key] || { color: "#f8f7f4", accent: "#f59e0b", listingLimit: 10, popular: false };
+  return {
+    id:           key,
+    name:         dbPlan.name,
+    price:        dbPlan.price,
+    features:     Array.isArray(dbPlan.features) ? dbPlan.features : [],
+    active:       dbPlan.active,
+    subscribers:  dbPlan.subscribers,
+    ...ui,
+  };
+}
+
 
 /* ─── Helpers ─── */
 const PageHero = ({ icon, title, subtitle }) => (
@@ -1422,11 +1443,13 @@ export default function RentCircle() {
   const [flags, setFlags] = useState({ subscriptionPlans: true, tagging: true, smartSearch: true, phoneVerification: true, emailVerification: true, customFields: true });
   const [adminTags, setAdminTags] = useState([]);
   const [customFields, setCustomFields] = useState([]);
+  const [plans, setPlans] = useState(DEFAULT_PLANS);
 
   useEffect(() => {
+    // ── Initial load ──────────────────────────────────────
     fetchProducts()
       .then(rows => setAllProducts(rows.map(fromDbProduct)))
-      .catch(() => {}) // keep defaultProducts fallback
+      .catch(() => {})
     fetchTags()
       .then(rows => setAdminTags(rows.filter(t => t.active)))
       .catch(() => {})
@@ -1436,6 +1459,42 @@ export default function RentCircle() {
     fetchCustomFields()
       .then(rows => setCustomFields(rows.filter(f => f.active)))
       .catch(() => {})
+    fetchPlans()
+      .then(rows => {
+        const mapped = rows.filter(p => p.active !== false).map(dbPlanToFrontend)
+        if (mapped.length) setPlans(mapped)
+      })
+      .catch(() => {})
+
+    // ── Realtime: re-fetch full list on any change ────────
+    const unsubs = [
+      subscribeTo('plans', () =>
+        fetchPlans()
+          .then(rows => {
+            const mapped = rows.filter(p => p.active !== false).map(dbPlanToFrontend)
+            if (mapped.length) setPlans(mapped)
+          })
+          .catch(() => {})
+      ),
+      subscribeTo('products', () =>
+        fetchProducts()
+          .then(rows => setAllProducts(rows.map(fromDbProduct)))
+          .catch(() => {})
+      ),
+      subscribeTo('tags', () =>
+        fetchTags()
+          .then(rows => setAdminTags(rows.filter(t => t.active)))
+          .catch(() => {})
+      ),
+      subscribeTo('feature_flags', () =>
+        fetchFlags()
+          .then(dbFlags => setFlags(f => ({ ...f, ...dbFlags })))
+          .catch(() => {})
+      ),
+    ]
+
+    // Cleanup on unmount
+    return () => unsubs.forEach(fn => fn())
   }, []);
 
   const showNotif = (msg, type = "success") => { setNotif({ msg, type }); setTimeout(() => setNotif(null), 3000); };

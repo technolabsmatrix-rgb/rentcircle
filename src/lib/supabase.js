@@ -101,8 +101,16 @@ export const deleteTag = (id) =>
 export const fetchPlans = () =>
   q('plans', () => supabase.from('plans').select('*').order('price'))
 
-export const upsertPlan = (plan) =>
-  q('plans/upsert', () => supabase.from('plans').upsert(plan).select().single())
+export const upsertPlan = (plan) => {
+  // Strip frontend-only UI fields before sending to DB
+  const { color, accent, listingLimit, popular, ...dbPlan } = plan
+  return q('plans/upsert', () =>
+    supabase.from('plans')
+      .upsert(dbPlan, { onConflict: 'id' })
+      .select()
+      .single()
+  )
+}
 
 // ─── Profiles ─────────────────────────────────────────────
 export const fetchProfiles = () =>
@@ -196,4 +204,23 @@ export function fromDbProduct(p) {
     photos:      p.photos  || [],
     createdAt:   p.created_at,
   }
+}
+
+// ─── Realtime subscriptions ───────────────────────────────
+// Call once on app start — callback fires whenever a table changes
+export function subscribeTo(table, callback) {
+  const channel = supabase
+    .channel(`realtime:${table}`)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table },
+      (payload) => {
+        console.log(`🔄 Realtime [${table}]:`, payload.eventType, payload)
+        callback(payload)
+      }
+    )
+    .subscribe((status) => {
+      console.log(`📡 Realtime [${table}] status:`, status)
+    })
+  // Return unsubscribe function
+  return () => supabase.removeChannel(channel)
 }
