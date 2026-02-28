@@ -84,168 +84,155 @@ function TagBadge({ tag }) {
 
 /* ─── Auth Modal ─── */
 function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
-  const [mode, setMode] = useState("login");
-  const [step, setStep] = useState("form"); // "form" | "verify_email" | "verify_phone" | "done"
-  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [name, setName] = useState("");
+  const [mode, setMode]       = useState("login");
+  const [step, setStep]       = useState("form"); // "form" | "check_email" | "done"
+  const [email, setEmail]     = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName]       = useState("");
   const [customData, setCustomData] = useState({});
-  const [emailOtp, setEmailOtp] = useState(""); const [phoneOtp, setPhoneOtp] = useState("");
-  const [enteredEmailOtp, setEnteredEmailOtp] = useState(""); const [enteredPhoneOtp, setEnteredPhoneOtp] = useState("");
-  const [emailVerified, setEmailVerified] = useState(false); const [phoneVerified, setPhoneVerified] = useState(false);
-  const [loading, setLoading] = useState(null); const [focused, setFocused] = useState(null); const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(null);
+  const [errors, setErrors]   = useState({});
 
   const inp = (id) => ({ width: "100%", border: `1.5px solid ${errors[id] ? C.red : focused === id ? C.dark : C.border}`, borderRadius: "12px", padding: "0.8rem 1rem", outline: "none", fontSize: "0.9rem", fontFamily: "'Outfit', sans-serif", boxSizing: "border-box", marginBottom: errors[id] ? "0.2rem" : "0.75rem", transition: "border-color 0.2s", color: C.dark, background: "#fff" });
 
   const socialProviders = [
-    { name: "Google", bg: "#fff", color: "#374151", border: `1.5px solid ${C.border}`, logo: <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.33-8.16 2.33-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> },
-    { name: "Facebook", bg: "#1877F2", color: "#fff", border: "none", logo: <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> },
+    { name: "Google",   bg: "#fff",     color: "#374151", border: `1.5px solid ${C.border}`, logo: <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.33-8.16 2.33-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> },
+    { name: "Facebook", bg: "#1877F2",  color: "#fff",    border: "none", logo: <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> },
   ];
 
-  // ── Real Supabase OAuth ───────────────────────────────────
+  // ── Real Supabase OAuth (hidden until configured) ─────────
   const handleSocial = async (providerName) => {
-    setLoading(providerName);
-    setErrors({});
-    try {
-      const provider = providerName.toLowerCase(); // "google" | "facebook"
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: window.location.origin, // returns to your site after OAuth
-        },
-      });
-      if (error) {
-        setErrors({ social: error.message });
-        setLoading(null);
-      }
-      // On success Supabase redirects the browser — no code needed here
-    } catch (e) {
-      setErrors({ social: e.message });
-      setLoading(null);
-    }
+    setLoading(true); setErrors({});
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: providerName.toLowerCase(),
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) { setErrors({ general: error.message }); setLoading(false); }
   };
 
   const validate = () => {
     const errs = {};
-    if (!email) errs.email = "Required";
+    if (!email)                          errs.email    = "Required";
     if (!password || password.length < 6) errs.password = "Min 6 characters";
-    if (mode === "signup") {
-      if (!name) errs.name = "Required";
-      customFields.forEach(cf => { if (cf.required && !customData[cf.key]) errs[cf.key] = "Required"; });
-    }
+    if (mode === "signup" && !name)       errs.name     = "Required";
+    customFields.forEach(cf => { if (cf.required && !customData[cf.key]) errs[cf.key] = "Required"; });
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleEmail = () => {
+  // ── Sign Up — Supabase sends real confirmation email ──────
+  const handleSignUp = async () => {
     if (!validate()) return;
-    setLoading("email");
-    setTimeout(() => {
-      setLoading(null);
-      if (mode === "login") {
-        onLogin({ name: name || email.split("@")[0], email, avatar: (name || email)[0].toUpperCase(), subscription: null, emailVerified: true, phoneVerified: true, ...customData });
-      } else {
-        // Signup — go to verification if needed
-        const needsEmailVerify = flags.emailVerification;
-        const hasPhone = customData.phone || customFields.find(cf => cf.key === "phone");
-        const needsPhoneVerify = flags.phoneVerification && (customData.phone || hasPhone);
-        if (needsEmailVerify) {
-          const otp = String(Math.floor(100000 + Math.random() * 900000));
-          setEmailOtp(otp);
-          setStep("verify_email");
-        } else if (needsPhoneVerify && customData.phone) {
-          const otp = String(Math.floor(100000 + Math.random() * 900000));
-          setPhoneOtp(otp);
-          setStep("verify_phone");
-        } else {
-          onLogin({ name, email, avatar: name[0].toUpperCase(), subscription: null, emailVerified: !flags.emailVerification, phoneVerified: !flags.phoneVerification, ...customData });
-        }
-      }
-    }, 1200);
-  };
-
-  const verifyEmailOtp = () => {
-    if (enteredEmailOtp === emailOtp) {
-      setEmailVerified(true);
-      const hasPhone = customData.phone;
-      if (flags.phoneVerification && hasPhone) {
-        const otp = String(Math.floor(100000 + Math.random() * 900000));
-        setPhoneOtp(otp);
-        setStep("verify_phone");
-      } else {
-        setStep("done");
-        setTimeout(() => onLogin({ name, email, avatar: name[0].toUpperCase(), subscription: null, emailVerified: true, phoneVerified: !flags.phoneVerification, ...customData }), 800);
-      }
+    setLoading(true); setErrors({});
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: name, ...customData },   // stored in user metadata
+        emailRedirectTo: window.location.origin,     // where to land after clicking email link
+      },
+    });
+    setLoading(false);
+    if (error) {
+      setErrors({ general: error.message });
     } else {
-      setErrors({ otp: "Incorrect OTP. Try: " + emailOtp });
+      setStep("check_email"); // show "check your inbox" screen
     }
   };
 
-  const verifyPhoneOtp = () => {
-    if (enteredPhoneOtp === phoneOtp) {
-      setPhoneVerified(true);
-      setStep("done");
-      setTimeout(() => onLogin({ name, email, avatar: name[0].toUpperCase(), subscription: null, emailVerified: true, phoneVerified: true, ...customData }), 800);
+  // ── Sign In — real Supabase password login ────────────────
+  const handleSignIn = async () => {
+    if (!validate()) return;
+    setLoading(true); setErrors({});
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      if (error.message.includes("Email not confirmed")) {
+        setErrors({ general: "Please confirm your email first. Check your inbox for the verification link." });
+      } else if (error.message.includes("Invalid login")) {
+        setErrors({ general: "Incorrect email or password." });
+      } else {
+        setErrors({ general: error.message });
+      }
+      return;
+    }
+    const u = data.user;
+    const displayName = u.user_metadata?.full_name || u.user_metadata?.name || u.email.split("@")[0];
+    onLogin({
+      name:          displayName,
+      email:         u.email,
+      avatar:        displayName[0].toUpperCase(),
+      subscription:  null,
+      emailVerified: !!u.email_confirmed_at,
+      phoneVerified: false,
+      supabaseId:    u.id,
+    });
+  };
+
+  const handleSubmit = () => mode === "signup" ? handleSignUp() : handleSignIn();
+
+  // ── Forgot password ───────────────────────────────────────
+  const handleForgotPassword = async () => {
+    if (!email) { setErrors({ email: "Enter your email first" }); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    setLoading(false);
+    if (error) {
+      setErrors({ general: error.message });
     } else {
-      setErrors({ otpPhone: "Incorrect OTP. Try: " + phoneOtp });
+      setErrors({ general: "" });
+      setStep("forgot_sent");
     }
   };
 
-  // Verification screen
-  if (step === "verify_email" || step === "verify_phone") {
-    const isEmail = step === "verify_email";
-    const contact = isEmail ? email : customData.phone;
+  // ── "Check your inbox" screen (after signup) ──────────────
+  if (step === "check_email") {
     return (
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,0.75)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", backdropFilter: "blur(6px)" }}>
-        <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "28px", padding: "2.5rem", width: "100%", maxWidth: "420px", boxShadow: "0 40px 100px rgba(0,0,0,0.3)", position: "relative" }}>
+        <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "28px", padding: "2.5rem", width: "100%", maxWidth: "400px", boxShadow: "0 40px 100px rgba(0,0,0,0.3)", textAlign: "center", position: "relative" }}>
           <button onClick={onClose} style={{ position: "absolute", top: "1.25rem", right: "1.25rem", border: "none", background: "#f3f4f6", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer" }}>✕</button>
-          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-            <div style={{ width: "72px", height: "72px", background: isEmail ? "linear-gradient(135deg,#dbeafe,#bfdbfe)" : "linear-gradient(135deg,#dcfce7,#bbf7d0)", borderRadius: "22px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", margin: "0 auto 1rem" }}>{isEmail ? "📧" : "📱"}</div>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 800, marginBottom: "0.5rem" }}>Verify your {isEmail ? "email" : "phone"}</h2>
-            <p style={{ color: C.muted, fontSize: "0.88rem" }}>We sent a 6-digit OTP to <strong>{contact}</strong></p>
-            <div style={{ background: "#fef9c3", border: "1px solid #fde68a", borderRadius: "10px", padding: "0.6rem 1rem", marginTop: "0.75rem", fontSize: "0.82rem", color: "#92400e" }}>
-              🔑 Demo OTP: <strong>{isEmail ? emailOtp : phoneOtp}</strong>
-            </div>
+          <div style={{ width: "72px", height: "72px", background: "linear-gradient(135deg,#dbeafe,#bfdbfe)", borderRadius: "22px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", margin: "0 auto 1.25rem" }}>📧</div>
+          <h2 style={{ fontSize: "1.4rem", fontWeight: 800, marginBottom: "0.5rem" }}>Check your inbox!</h2>
+          <p style={{ color: C.muted, fontSize: "0.9rem", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+            We sent a confirmation link to<br /><strong>{email}</strong><br />Click it to activate your account.
+          </p>
+          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "12px", padding: "0.75rem 1rem", fontSize: "0.83rem", color: "#166534", marginBottom: "1.5rem" }}>
+            ✅ After confirming, come back and sign in.
           </div>
-          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-            {[0,1,2,3,4,5].map(i => {
-              const val = isEmail ? enteredEmailOtp : enteredPhoneOtp;
-              const setter = isEmail ? setEnteredEmailOtp : setEnteredPhoneOtp;
-              return (
-                <input key={i} maxLength={1} value={val[i] || ""} onChange={e => {
-                  const newVal = val.split(""); newVal[i] = e.target.value.slice(-1); setter(newVal.join("").slice(0,6));
-                  if (e.target.value && i < 5) document.getElementById(`otp-${i+1}`)?.focus();
-                }} id={`otp-${i}`} style={{ flex: 1, height: "52px", textAlign: "center", fontSize: "1.4rem", fontWeight: 800, border: `2px solid ${errors.otp || errors.otpPhone ? C.red : C.border}`, borderRadius: "12px", outline: "none", background: val[i] ? "#f0fdf4" : "#fff" }} />
-              );
-            })}
-          </div>
-          {(errors.otp || errors.otpPhone) && <p style={{ color: C.red, fontSize: "0.8rem", marginBottom: "0.75rem", textAlign: "center" }}>{errors.otp || errors.otpPhone}</p>}
-          <button onClick={isEmail ? verifyEmailOtp : verifyPhoneOtp}
-            style={{ width: "100%", background: C.dark, color: "#fff", border: "none", borderRadius: "12px", padding: "0.9rem", cursor: "pointer", fontWeight: 800, fontSize: "1rem", fontFamily: "'Outfit', sans-serif", marginBottom: "0.75rem" }}>
-            Verify {isEmail ? "Email" : "Phone"} →
+          <button onClick={() => { setStep("form"); setMode("login"); }} style={{ width: "100%", background: C.dark, color: "#fff", border: "none", borderRadius: "12px", padding: "0.85rem", cursor: "pointer", fontWeight: 700, fontSize: "0.95rem", fontFamily: "'Outfit', sans-serif" }}>
+            Go to Sign In →
           </button>
-          <button onClick={() => {
-            const otp = String(Math.floor(100000 + Math.random() * 900000));
-            if (isEmail) setEmailOtp(otp); else setPhoneOtp(otp);
-            setEnteredEmailOtp(""); setEnteredPhoneOtp(""); setErrors({});
-          }} style={{ width: "100%", background: "transparent", border: `1.5px solid ${C.border}`, borderRadius: "12px", padding: "0.7rem", cursor: "pointer", fontWeight: 600, fontSize: "0.88rem", color: C.muted, fontFamily: "'Outfit', sans-serif" }}>
-            Resend OTP
+          <button onClick={async () => {
+            await supabase.auth.resend({ type: "signup", email });
+            setErrors({ resent: "Resent! Check your inbox." });
+          }} style={{ width: "100%", background: "transparent", border: `1.5px solid ${C.border}`, borderRadius: "12px", padding: "0.7rem", cursor: "pointer", fontWeight: 600, fontSize: "0.85rem", color: C.muted, fontFamily: "'Outfit', sans-serif", marginTop: "0.6rem" }}>
+            Resend confirmation email
           </button>
+          {errors.resent && <p style={{ color: "#16a34a", fontSize: "0.8rem", marginTop: "0.5rem" }}>{errors.resent}</p>}
         </div>
       </div>
     );
   }
 
-  if (step === "done") {
+  // ── "Reset email sent" screen ─────────────────────────────
+  if (step === "forgot_sent") {
     return (
-      <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,0.75)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ background: "#fff", borderRadius: "28px", padding: "3rem 2.5rem", maxWidth: "380px", textAlign: "center" }}>
-          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🎉</div>
-          <h2 style={{ fontWeight: 900, fontSize: "1.5rem", marginBottom: "0.5rem" }}>You're all verified!</h2>
-          <p style={{ color: C.muted }}>Welcome to RentCircle, {name}!</p>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,0.75)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", backdropFilter: "blur(6px)" }}>
+        <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "28px", padding: "2.5rem", width: "100%", maxWidth: "400px", boxShadow: "0 40px 100px rgba(0,0,0,0.3)", textAlign: "center", position: "relative" }}>
+          <button onClick={onClose} style={{ position: "absolute", top: "1.25rem", right: "1.25rem", border: "none", background: "#f3f4f6", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer" }}>✕</button>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔑</div>
+          <h2 style={{ fontSize: "1.4rem", fontWeight: 800, marginBottom: "0.5rem" }}>Password reset sent!</h2>
+          <p style={{ color: C.muted, fontSize: "0.9rem", lineHeight: 1.6 }}>Check <strong>{email}</strong> for a reset link.</p>
+          <button onClick={onClose} style={{ marginTop: "1.5rem", width: "100%", background: C.dark, color: "#fff", border: "none", borderRadius: "12px", padding: "0.85rem", cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>Done</button>
         </div>
       </div>
     );
   }
 
+  // ── Main login / signup form ──────────────────────────────
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,10,20,0.75)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", backdropFilter: "blur(6px)" }}>
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "28px", padding: "2.5rem", width: "100%", maxWidth: "440px", boxShadow: "0 40px 100px rgba(0,0,0,0.3)", position: "relative", maxHeight: "90vh", overflowY: "auto" }}>
@@ -254,29 +241,34 @@ function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
         <h2 style={{ fontSize: "1.5rem", fontWeight: 800, margin: "0 0 0.25rem" }}>{mode === "login" ? "Welcome back!" : "Join RentCircle"}</h2>
         <p style={{ color: C.muted, fontSize: "0.85rem", marginBottom: "1.5rem" }}>{mode === "login" ? "Sign in to continue renting" : "Join 5,510+ happy renters"}</p>
 
+        {/* SOCIAL LOGIN — hidden, re-enable when OAuth is configured
         {socialProviders.map(p => (
-          <button key={p.name} disabled={!!loading} onClick={() => handleSocial(p.name)} style={{ width: "100%", border: p.border, borderRadius: "12px", padding: "0.8rem 1rem", background: p.bg, color: p.color, cursor: loading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", fontFamily: "'Outfit', sans-serif", marginBottom: "0.6rem", opacity: loading === p.name ? 0.6 : 1, boxShadow: "0 1px 6px rgba(0,0,0,0.1)" }}>
-            {loading === p.name ? <><span style={{ animation: "rc-spin 0.8s linear infinite", display: "inline-block" }}>⏳</span> Redirecting to {p.name}…</> : <>{p.logo}<span>Continue with {p.name}</span></>}
+          <button key={p.name} disabled={loading} onClick={() => handleSocial(p.name)} style={{ width: "100%", border: p.border, borderRadius: "12px", padding: "0.8rem 1rem", background: p.bg, color: p.color, cursor: "pointer", fontWeight: 700, fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", fontFamily: "'Outfit', sans-serif", marginBottom: "0.6rem", boxShadow: "0 1px 6px rgba(0,0,0,0.1)" }}>
+            {p.logo}<span>Continue with {p.name}</span>
           </button>
         ))}
-        {errors.social && (
-          <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "0.65rem 1rem", marginBottom: "0.75rem", color: "#dc2626", fontSize: "0.83rem" }}>
-            ⚠ {errors.social}
-          </div>
-        )}
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", margin: "1rem 0", color: C.muted, fontSize: "0.8rem" }}>
           <div style={{ flex: 1, height: "1px", background: C.border }} /><span>or use email</span><div style={{ flex: 1, height: "1px", background: C.border }} />
         </div>
+        */}
+
+        {errors.general && (
+          <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "0.65rem 1rem", marginBottom: "1rem", color: "#dc2626", fontSize: "0.83rem" }}>
+            ⚠ {errors.general}
+          </div>
+        )}
 
         {mode === "signup" && (
           <>
-            <input style={inp("name")} placeholder="Full name *" value={name} onChange={e => setName(e.target.value)} onFocus={() => setFocused("name")} onBlur={() => setFocused(null)} />
+            <input style={inp("name")} placeholder="Full name *" value={name} onChange={e => setName(e.target.value)} onFocus={() => setFocused("name")} onBlur={() => setFocused(null)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
             {errors.name && <p style={{ color: C.red, fontSize: "0.75rem", marginTop: "-0.5rem", marginBottom: "0.5rem" }}>{errors.name}</p>}
           </>
         )}
-        <input style={inp("email")} type="email" placeholder="Email address *" value={email} onChange={e => setEmail(e.target.value)} onFocus={() => setFocused("email")} onBlur={() => setFocused(null)} />
+
+        <input style={inp("email")} type="email" placeholder="Email address *" value={email} onChange={e => setEmail(e.target.value)} onFocus={() => setFocused("email")} onBlur={() => setFocused(null)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
         {errors.email && <p style={{ color: C.red, fontSize: "0.75rem", marginTop: "-0.5rem", marginBottom: "0.5rem" }}>{errors.email}</p>}
-        <input style={inp("pass")} type="password" placeholder="Password *" value={password} onChange={e => setPassword(e.target.value)} onFocus={() => setFocused("pass")} onBlur={() => setFocused(null)} />
+
+        <input style={inp("pass")} type="password" placeholder="Password *" value={password} onChange={e => setPassword(e.target.value)} onFocus={() => setFocused("pass")} onBlur={() => setFocused(null)} onKeyDown={e => e.key === "Enter" && handleSubmit()} />
         {errors.password && <p style={{ color: C.red, fontSize: "0.75rem", marginTop: "-0.5rem", marginBottom: "0.5rem" }}>{errors.password}</p>}
 
         {/* Custom registration fields from admin */}
@@ -294,18 +286,24 @@ function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
           </div>
         )}
 
-        {mode === "login" && <div style={{ textAlign: "right", marginBottom: "0.75rem" }}><button style={{ background: "none", border: "none", color: C.dark, fontWeight: 600, cursor: "pointer", fontSize: "0.8rem" }}>Forgot password?</button></div>}
-
-        {/* Verification notice */}
-        {mode === "signup" && (flags.emailVerification || flags.phoneVerification) && (
-          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px", padding: "0.65rem 0.9rem", marginBottom: "0.75rem", fontSize: "0.8rem", color: "#1e40af", display: "flex", gap: "0.5rem" }}>
-            <span>🔐</span>
-            <span>After signup, you'll verify your {[flags.emailVerification && "email", flags.phoneVerification && customData.phone && "phone"].filter(Boolean).join(" and ")} with a one-time code.</span>
+        {mode === "login" && (
+          <div style={{ textAlign: "right", marginBottom: "0.75rem" }}>
+            <button onClick={handleForgotPassword} style={{ background: "none", border: "none", color: C.dark, fontWeight: 600, cursor: "pointer", fontSize: "0.8rem" }}>
+              Forgot password?
+            </button>
           </div>
         )}
 
-        <button onClick={handleEmail} disabled={!!loading} style={{ width: "100%", background: C.dark, color: "#fff", border: "none", borderRadius: "12px", padding: "0.9rem", cursor: "pointer", fontWeight: 800, fontSize: "1rem", fontFamily: "'Outfit', sans-serif", opacity: loading === "email" ? 0.7 : 1 }}>
-          {loading === "email" ? "Please wait..." : mode === "login" ? "Sign In →" : "Create Account →"}
+
+        {mode === "signup" && (
+          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "0.65rem 1rem", marginBottom: "0.75rem", fontSize: "0.82rem", color: "#166534", display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+            <span>📧</span>
+            <span>After signing up, you'll receive a confirmation email. Click the link to activate your account.</span>
+          </div>
+        )}
+
+        <button onClick={handleSubmit} disabled={loading} style={{ width: "100%", background: C.dark, color: "#fff", border: "none", borderRadius: "12px", padding: "0.9rem", cursor: loading ? "not-allowed" : "pointer", fontWeight: 800, fontSize: "1rem", fontFamily: "'Outfit', sans-serif", opacity: loading ? 0.7 : 1 }}>
+          {loading ? "Please wait…" : mode === "login" ? "Sign In →" : "Create Account →"}
         </button>
         <div style={{ textAlign: "center", marginTop: "1.25rem", fontSize: "0.85rem", color: C.muted }}>
           {mode === "login" ? "No account? " : "Have account? "}
