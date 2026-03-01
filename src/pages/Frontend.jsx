@@ -2585,7 +2585,14 @@ export default function RentCircle() {
                       <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.3rem" }}>{p.category}</div>
                       <div style={{ color: "#fff", fontWeight: 800, fontSize: "1rem", marginBottom: "0.4rem", lineHeight: 1.3, paddingRight: "2rem" }}>{p.name}</div>
                       {/* Rating */}
-                      <div style={{ color: C.gold, fontSize: "0.78rem", fontWeight: 600, marginBottom: "1rem" }}>⭐ {p.rating} · {p.reviews} reviews</div>
+                      <div style={{ color: C.gold, fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.5rem" }}>⭐ {p.rating} · {p.reviews} reviews</div>
+                      {/* Min duration */}
+                      {(p.minDuration || p.min_duration) && (
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "rgba(191,219,254,0.15)", border: "1px solid rgba(191,219,254,0.3)", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.68rem", fontWeight: 700, color: "#93c5fd", marginBottom: "0.75rem" }}>
+                          ⏱ Min. {p.minDuration || p.min_duration} {p.minDurationType || p.min_duration_type || "days"}
+                        </div>
+                      )}
+                      {!(p.minDuration || p.min_duration) && <div style={{ marginBottom: "0.75rem" }} />}
                       {/* Price + CTA */}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <div>
@@ -2748,7 +2755,12 @@ export default function RentCircle() {
                         <span style={{ background: p.badge === "New" ? "#dcfce7" : p.badge === "Hot" ? "#fee2e2" : "#fef3c7", color: p.badge === "New" ? "#166534" : p.badge === "Hot" ? "#991b1b" : "#92400e", padding: "0.2rem 0.6rem", borderRadius: "20px", fontSize: "0.7rem", fontWeight: 700 }}>{p.badge}</span>
                       ) : null}
                     </div>
-                    <div style={{ color: "#9ca3af", fontSize: "0.8rem", marginBottom: "0.75rem" }}>{p.category} · ⭐ {p.rating} ({p.reviews}){p.location ? ` · 📍${p.location}` : ""}</div>
+                    <div style={{ color: "#9ca3af", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{p.category} · ⭐ {p.rating} ({p.reviews}){p.location ? ` · 📍${p.location}` : ""}</div>
+                    {(p.minDuration || p.min_duration) ? (
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "6px", padding: "0.18rem 0.55rem", fontSize: "0.72rem", fontWeight: 700, color: "#1d4ed8", marginBottom: "0.65rem" }}>
+                        ⏱ Min. {p.minDuration || p.min_duration} {p.minDurationType || p.min_duration_type || "days"}
+                      </div>
+                    ) : <div style={{ marginBottom: "0.65rem" }} />}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <PriceDisplay p={p} />
                       <button onClick={() => { const minDur = p.minDuration || p.min_duration || null; const minDurType = p.minDurationType || p.min_duration_type || "days"; const initPeriod = minDurType === "months" ? "month" : minDurType === "years" ? "year" : "day"; const initDays = minDur || 1; setSelectedProduct({ ...p, minDuration: minDur, minDurationType: minDurType }); setRentPeriod(initPeriod); setRentDays(initDays); setRentStartDate(""); setRentEndDate(""); }} style={{ background: C.dark, color: "#fff", border: "none", borderRadius: "10px", padding: "0.5rem 1.2rem", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem", fontFamily: "'Outfit', sans-serif" }}>Rent Now</button>
@@ -3077,8 +3089,12 @@ export default function RentCircle() {
                           })}
                         </div>
                         {minVal > 0 && (
-                          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "0.4rem 0.75rem", marginBottom: "1.25rem", fontSize: "0.75rem", color: "#1d4ed8", fontWeight: 600 }}>
-                            ⏱ Minimum rental: {minVal} {minType}
+                          <div style={{ background: "linear-gradient(135deg, #eff6ff, #dbeafe)", border: "1.5px solid #93c5fd", borderRadius: "10px", padding: "0.6rem 1rem", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <span style={{ fontSize: "1.1rem" }}>⏱</span>
+                            <div>
+                              <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#1d4ed8" }}>Minimum Rental: {minVal} {minType}</div>
+                              <div style={{ fontSize: "0.7rem", color: "#3b82f6", marginTop: "0.1rem" }}>You cannot book for less than this duration</div>
+                            </div>
                           </div>
                         )}
                       </>
