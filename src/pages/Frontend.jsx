@@ -125,7 +125,7 @@ function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
   const handleSignUp = async () => {
     if (!validate()) return;
     setLoading(true); setErrors({});
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -133,12 +133,31 @@ function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
         emailRedirectTo: window.location.origin,     // where to land after clicking email link
       },
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setErrors({ general: error.message });
-    } else {
-      setStep("check_email"); // show "check your inbox" screen
+      return;
     }
+    // ── Write to profiles table so Admin panel sees the user ──
+    if (signUpData?.user) {
+      const u = signUpData.user;
+      const joined = new Date().toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+      await supabase.from("profiles").upsert([{
+        id:             u.id,
+        name:           name || u.email.split("@")[0],
+        email:          u.email,
+        phone:          customData?.phone || "",
+        city:           customData?.city  || "",
+        plan:           "None",
+        status:         "active",
+        rentals:        0,
+        joined,
+        email_verified: false,
+        phone_verified: false,
+      }], { onConflict: "email" });
+    }
+    setLoading(false);
+    setStep("check_email"); // show "check your inbox" screen
   };
 
   // ── Sign In — real Supabase password login ────────────────
@@ -159,6 +178,23 @@ function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
     }
     const u = data.user;
     const displayName = u.user_metadata?.full_name || u.user_metadata?.name || u.email.split("@")[0];
+
+    // ── Ensure profile row exists (covers OAuth + any missed signups) ──
+    const joined = new Date().toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+    await supabase.from("profiles").upsert([{
+      id:             u.id,
+      name:           displayName,
+      email:          u.email,
+      phone:          u.user_metadata?.phone || "",
+      city:           u.user_metadata?.city  || "",
+      plan:           "None",
+      status:         "active",
+      rentals:        0,
+      joined,
+      email_verified: !!u.email_confirmed_at,
+      phone_verified: false,
+    }], { onConflict: "email", ignoreDuplicates: false });
+
     onLogin({
       name:          displayName,
       email:         u.email,
