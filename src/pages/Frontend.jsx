@@ -648,7 +648,7 @@ function PhotoUploader({ photos, onChange, maxPhotos = 8, accentColor, bgColor, 
 }
 
 /* ─── Add / Edit Product Modal ─── */
-function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], categories: dbCategories = [] }) {
+function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], categories: dbCategories = [], availableCities = [] }) {
   const plan = DEFAULT_PLANS.find(p => p.id === user?.subscription);
   // Use DB categories (active ones), fallback to hardcoded list if DB is empty
   const categoryList = dbCategories.length > 0
@@ -1723,7 +1723,7 @@ function RentPhotoCarousel({ photos, fallback }) {
 }
 
 /* ─── Profile Page ─── */
-function ProfilePage({ user, onUpdate, onUpgrade, currentPlan, navigate }) {
+function ProfilePage({ user, onUpdate, onUpgrade, currentPlan, navigate, availableCities = [] }) {
   const [form, setForm] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -1969,17 +1969,28 @@ export default function RentCircle() {
   useEffect(() => {
     // ── Initial load ──────────────────────────────────────
     const _cached = readCache();
-    // Helper to sync cities from admin localStorage
-    const syncCities = () => {
-      try { const s = localStorage.getItem('rc_cities'); if (s) setAvailableCities(JSON.parse(s)); } catch {}
+    // Helper to sync cities from admin localStorage, fallback to product locations
+    const syncCities = (rows) => {
+      try {
+        const s = localStorage.getItem('rc_cities');
+        if (s) {
+          const adminCities = JSON.parse(s);
+          if (adminCities.length > 0) { setAvailableCities(adminCities); return; }
+        }
+      } catch {}
+      // Fallback: derive from product locations
+      if (rows) {
+        const cities = [...new Set(rows.map(p => p.location).filter(Boolean).map(c => c.trim()).filter(c => c.length > 0))].sort();
+        setAvailableCities(cities);
+      }
     };
 
     if (!_cached || _cached.stale) {
       fetchProducts()
-        .then(rows => { setAllProducts(rows); writeCache(rows); syncCities(); })
+        .then(rows => { setAllProducts(rows); writeCache(rows); syncCities(rows); })
         .catch(() => {})
     } else {
-      syncCities();
+      syncCities(_cached.data || []);
     }
     fetchTags()
       .then(rows => setAdminTags(rows.filter(t => t.active)))
@@ -2194,12 +2205,22 @@ export default function RentCircle() {
 
   // Keep availableCities in sync with admin localStorage settings
   useEffect(() => {
-    const handleStorage = () => {
-      try { const s = localStorage.getItem('rc_cities'); if (s) setAvailableCities(JSON.parse(s)); } catch {}
+    const handleStorage = (e) => {
+      if (e && e.key !== 'rc_cities') return;
+      try {
+        const s = localStorage.getItem('rc_cities');
+        if (s) {
+          const adminCities = JSON.parse(s);
+          if (adminCities.length > 0) { setAvailableCities(adminCities); return; }
+        }
+      } catch {}
+      // Fallback to product-based cities
+      const cities = [...new Set(allProducts.map(p => p.location).filter(Boolean).map(c => c.trim()).filter(c => c.length > 0))].sort();
+      setAvailableCities(cities);
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  }, [allProducts]);
 
   const filteredProducts = useMemo(() => {
     let result = allProducts.filter(p => {
@@ -2295,7 +2316,7 @@ export default function RentCircle() {
     if (activeTab === "terms") return <TermsPage />;
     if (activeTab === "profile") {
       if (!user) { navigate("home"); return null; }
-      return <ProfilePage user={user} onUpdate={(u) => { setUser(u); showNotif("Profile updated! ✓"); }} onUpgrade={() => setSubGateOpen(true)} currentPlan={currentPlan} navigate={navigate} />;
+      return <ProfilePage user={user} onUpdate={(u) => { setUser(u); showNotif("Profile updated! ✓"); }} onUpgrade={() => setSubGateOpen(true)} currentPlan={currentPlan} navigate={navigate} availableCities={availableCities} />;
     }
     if (activeTab === "my-orders") {
       if (!user) { navigate("home"); return null; }
@@ -2760,7 +2781,7 @@ export default function RentCircle() {
         {notif && <div style={{ position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)", background: C.dark, color: "#fff", padding: "0.9rem 1.8rem", borderRadius: "50px", fontWeight: 600, zIndex: 999, boxShadow: "0 10px 30px rgba(0,0,0,0.2)", whiteSpace: "nowrap" }}>✓ {notif.msg}</div>}
         {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onLogin={handleLogin} flags={flags} customFields={flags.customFields ? customFields : []} />}
         {subGateOpen && <SubscriptionGate onClose={() => setSubGateOpen(false)} onSubscribe={handleSubscribe} user={user} />}
-        {addProductOpen && <AddProductModal onClose={() => { setAddProductOpen(false); setEditingProduct(null); }} onSave={handleSaveProduct} editProduct={editingProduct} user={user} adminTags={adminTags} categories={adminCategories} />}
+        {addProductOpen && <AddProductModal onClose={() => { setAddProductOpen(false); setEditingProduct(null); }} onSave={handleSaveProduct} editProduct={editingProduct} user={user} adminTags={adminTags} categories={adminCategories} availableCities={availableCities} />}
 
         {/* NAV */}
         <nav style={{ background: "#fff", color: C.dark, padding: "0 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", height: "72px", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 16px rgba(0,0,0,0.08)", borderBottom: `1px solid ${C.border}`, gap: "1rem" }}>
