@@ -1737,10 +1737,24 @@ export default function RentCircle() {
       })
       .catch(() => {})
 
-    // ── OAuth session: fires when user returns after Google/Facebook login ──
+    // ── Restore master user session on page load ──────────
+    try {
+      const savedMaster = sessionStorage.getItem('rc_master_session');
+      if (savedMaster) {
+        setUser(JSON.parse(savedMaster));
+      }
+    } catch (_) {}
+
+    // ── Auth session: handles page refresh + OAuth + sign-in ──
     const { data: { subscription: authSub } } = onAuthChange((event, session) => {
       console.log('🔐 Auth event:', event, session?.user?.email)
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+
+      // Skip Supabase session restore if master user is active
+      try {
+        if (sessionStorage.getItem('rc_master_session')) return;
+      } catch (_) {}
+
+      if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         const u = session.user
         const displayName = u.user_metadata?.full_name || u.user_metadata?.name || u.email.split('@')[0]
         setUser({
@@ -1753,6 +1767,10 @@ export default function RentCircle() {
           supabaseId: u.id,
         })
         setAuthOpen(false)
+      }
+      if (event === 'INITIAL_SESSION' && !session) {
+        // No session on load — ensure user is null
+        setUser(null)
       }
       if (event === 'SIGNED_OUT') {
         setUser(null)
@@ -1794,8 +1812,24 @@ export default function RentCircle() {
   }, []);
 
   const showNotif = (msg, type = "success") => { setNotif({ msg, type }); setTimeout(() => setNotif(null), 3000); };
-  const handleLogin = (u) => { setUser(u); setAuthOpen(false); showNotif(`Welcome, ${u.name}! 🎉`); };
-  const handleLogout = () => { setUser(null); setUserMenuOpen(false); showNotif("Signed out", "info"); };
+  const handleLogin = (u) => {
+    setUser(u);
+    setAuthOpen(false);
+    // Persist master user across page refreshes
+    if (u.isMaster) {
+      try { sessionStorage.setItem('rc_master_session', JSON.stringify(u)); } catch (_) {}
+    }
+    showNotif(`Welcome, ${u.name}! 🎉`);
+  };
+  const handleLogout = () => {
+    setUser(null);
+    setUserMenuOpen(false);
+    // Clear master session
+    try { sessionStorage.removeItem('rc_master_session'); } catch (_) {}
+    // Sign out from Supabase too
+    supabase.auth.signOut().catch(() => {});
+    showNotif("Signed out", "info");
+  };
   const navigate = (tab) => { setActiveTab(tab); setUserMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   const handleSubscribe = (plan) => {
