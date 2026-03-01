@@ -59,15 +59,15 @@ function MyOrdersPage({ user, allProducts }) {
   const activeCount    = orders.filter(o => o.status === "active").length;
   const completedCount = orders.filter(o => o.status === "completed").length;
 
-  if (loading) return <div style={{ padding: "6rem 2rem", textAlign: "center", fontFamily: "'Outfit',sans-serif" }}><div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>⏳</div><p style={{ color: C.muted }}>Loading your orders...</p></div>;
+  if (loading) return <div style={{ padding:"6rem 2rem",textAlign:"center",fontFamily:"'Outfit',sans-serif" }}><div style={{ fontSize:"2.5rem",marginBottom:"1rem" }}>⏳</div><p style={{ color:C.muted }}>Loading your orders...</p></div>;
 
   return (
-    <div style={{ padding: "2.5rem 2rem", maxWidth: "1200px", margin: "0 auto", fontFamily: "'Outfit',sans-serif" }}>
-      <div style={{ marginBottom: "2rem" }}>
-        <h1 style={{ fontWeight: 900, fontSize: "2rem", marginBottom: "0.25rem", color: C.dark }}>📋 My Orders</h1>
-        <p style={{ color: C.muted }}>Orders placed on your listed products</p>
+    <div style={{ padding:"2.5rem 2rem",maxWidth:"1200px",margin:"0 auto",fontFamily:"'Outfit',sans-serif" }}>
+      <div style={{ marginBottom:"2rem" }}>
+        <h1 style={{ fontWeight:900,fontSize:"2rem",marginBottom:"0.25rem",color:C.dark }}>📋 My Orders</h1>
+        <p style={{ color:C.muted }}>Orders placed on your listed products</p>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "1rem", marginBottom: "2rem" }}>
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:"1rem",marginBottom:"2rem" }}>
         {[{label:"Total Orders",value:orders.length,icon:"📦",color:C.dark},{label:"Active",value:activeCount,icon:"🟢",color:"#10b981"},{label:"Completed",value:completedCount,icon:"✅",color:"#6366f1"},{label:"Revenue",value:`₹${Number(totalRevenue).toLocaleString("en-IN")}`,icon:"💰",color:C.green}].map(s=>(
           <div key={s.label} style={{ background:"#fff",borderRadius:"16px",padding:"1.25rem 1.5rem",border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
             <div style={{ fontSize:"1.5rem",marginBottom:"0.4rem" }}>{s.icon}</div>
@@ -300,7 +300,7 @@ function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
         joined,
         email_verified: false,
         phone_verified: false,
-      }], { onConflict: "email" });
+      }], { onConflict: "id" });
     }
     setLoading(false);
     setStep("check_email"); // show "check your inbox" screen
@@ -346,7 +346,7 @@ function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
       joined,
       email_verified: !!u.email_confirmed_at,
       phone_verified: false,
-    }], { onConflict: "email", ignoreDuplicates: false });
+    }], { onConflict: "id", ignoreDuplicates: false });
 
     onLogin({
       name:          displayName,
