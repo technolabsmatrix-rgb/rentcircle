@@ -187,8 +187,10 @@ function toDbProduct(p) {
     rentals:     p.rentals,
     owner_name:  p.owner     || p.ownerName,
     owner_email: p.ownerEmail,
-    tag_ids:     p.tags      || p.tagIds || [],
-    photos:      photoUrls,   // ← save as plain URL strings
+    tag_ids:          p.tags      || p.tagIds || [],
+    photos:           photoUrls,   // ← save as plain URL strings
+    min_duration:     p.minDuration     || p.min_duration     || null,
+    min_duration_type: p.minDurationType || p.min_duration_type || 'days',
   }
 }
 
@@ -224,8 +226,11 @@ export function fromDbProduct(p) {
     tags:        p.tag_ids || [],
     photos,      // ← always {id, url} objects
     createdAt:   p.created_at,
+    minDuration:     p.min_duration     || null,
+    minDurationType: p.min_duration_type || 'days',
   }
 }
+
 
 
 
