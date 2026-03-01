@@ -677,6 +677,14 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
     return { ...f, tags: tags.includes(tagId) ? tags.filter(t => t !== tagId) : [...tags, tagId] };
   });
 
+  const validateStep1 = () => {
+    const e = {};
+    if (!form.name?.trim()) e.name = "Product name is required";
+    if (!form.priceDay || Number(form.priceDay) <= 0) e.priceDay = "Price per day is required and must be > 0";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
   const validate = () => {
     const e = {};
     if (!form.name?.trim()) e.name = "Product name is required";
@@ -686,10 +694,20 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
     return Object.keys(e).length === 0;
   };
 
-  const handleContinue = () => { if (validate()) setStep(2); };
+  const handleContinue = () => { if (validateStep1()) setStep(2); };
 
   const handleSave = () => {
-    if (!validate()) { setStep(1); return; }
+    const e = {};
+    if (!form.name?.trim()) e.name = "Product name is required";
+    if (!form.priceDay || Number(form.priceDay) <= 0) e.priceDay = "Price per day is required and must be > 0";
+    if (!form.location?.trim()) e.location = "City is required";
+    setErrors(e);
+    if (Object.keys(e).length > 0) {
+      // Go back to the step that has the first error
+      if (e.name || e.priceDay) { setStep(1); return; }
+      if (e.location) { setStep(3); return; }
+      return;
+    }
     const isEdit = !!editProduct;
     if (isEdit && !editConfirmed) return;
     onSave({
