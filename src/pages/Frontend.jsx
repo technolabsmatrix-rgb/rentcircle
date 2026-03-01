@@ -394,7 +394,7 @@ function SubscriptionGate({ onClose, onSubscribe, user }) {
           </p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.25rem" }}>
-          {plans.map(plan => (
+          {DEFAULT_PLANS.map(plan => (
             <div key={plan.id} style={{ background: plan.color, borderRadius: "20px", padding: "1.75rem", border: plan.popular ? `3px solid ${plan.accent}` : `3px solid transparent`, position: "relative", display: "flex", flexDirection: "column" }}>
               {plan.popular && <div style={{ position: "absolute", top: "-13px", left: "50%", transform: "translateX(-50%)", background: plan.accent, color: "#fff", borderRadius: "50px", padding: "0.25rem 0.9rem", fontSize: "0.72rem", fontWeight: 700, whiteSpace: "nowrap" }}>MOST POPULAR</div>}
               <div style={{ fontWeight: 900, fontSize: "1.15rem", marginBottom: "0.15rem" }}>{plan.name}</div>
@@ -520,7 +520,7 @@ function PhotoUploader({ photos, onChange, maxPhotos = 8, accentColor, bgColor, 
 
 /* ─── Add / Edit Product Modal ─── */
 function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [] }) {
-  const plan = plans.find(p => p.id === user?.subscription);
+  const plan = DEFAULT_PLANS.find(p => p.id === user?.subscription);
   const [form, setForm] = useState(editProduct ? { ...editProduct } : { name: "", category: "Electronics", priceDay: "", priceMonth: "", priceYear: "", description: "", image: "📷", condition: "Excellent", location: "", tags: [] });
   const [photos, setPhotos] = useState(editProduct?.photos || []);
   const [focused, setFocused] = useState(null);
@@ -731,7 +731,7 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [] })
 /* ─── My Listings Page ─── */
 function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDeleteProduct, onUpgrade, navigate }) {
   const myListings = allProducts.filter(p => p.ownerEmail === user?.email);
-  const plan = plans.find(p => p.id === user?.subscription);
+  const plan = DEFAULT_PLANS.find(p => p.id === user?.subscription);
   const limit = plan ? plan.listingLimit : 0;
   const canAdd = myListings.length < limit;
 
