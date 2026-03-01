@@ -581,8 +581,8 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
       unit: "day",
       owner: user.name,
       ownerEmail: user.email,
-      // Regular users submit for approval; master & edits keep existing status
-      status: isEdit ? (editProduct.status || "active") : (user?.isMaster ? "active" : "pending_approval"),
+      // All new products go to pending_approval; edits keep existing status
+      status: isEdit ? (editProduct.status || "active") : "pending_approval",
     });
   };
 

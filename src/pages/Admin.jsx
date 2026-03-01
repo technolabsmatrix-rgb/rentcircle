@@ -286,7 +286,9 @@ function TagBadge({ tag, small }) {
 
 /* ─── Admin Dashboard ─── */
 export default function AdminPortal() {
-  const [adminUser, setAdminUser] = useState(null);
+  const [adminUser, setAdminUser] = useState(() => {
+    try { const s = sessionStorage.getItem('rc_admin_session'); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
   const [activeSection, setActiveSection] = useState("dashboard");
   const { categories, save: saveCategory, remove: removeCategory } = useCategories(initialCategories);
   const { products, setProducts, add: addProduct, update: updateProductDb, remove: removeProduct } = useProducts(initialProducts);
@@ -352,7 +354,7 @@ export default function AdminPortal() {
   ]), [orders, oSearch, oSort, oDir, oStatusFilter]);
 
   /* ─── Early return after all hooks ─── */
-  if (!adminUser) return <AdminLogin onLogin={u => setAdminUser(u)} />;
+  if (!adminUser) return <AdminLogin onLogin={u => { sessionStorage.setItem('rc_admin_session', JSON.stringify(u)); setAdminUser(u); }} />;
 
   const showNotif = (msg, type = "success") => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 3500); };
 
@@ -1163,7 +1165,7 @@ export default function AdminPortal() {
                 <div style={{ fontSize: "0.72rem", color: COLORS.muted }}>{adminUser.email}</div>
               </div>
             )}
-            <button onClick={() => setAdminUser(null)} style={{ ...s.btn("danger"), width: "100%", justifyContent: "center", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <button onClick={() => { sessionStorage.removeItem('rc_admin_session'); setAdminUser(null); }} style={{ ...s.btn("danger"), width: "100%", justifyContent: "center", display: "flex", alignItems: "center", gap: "0.4rem" }}>
               {sidebarOpen ? "⏻ Sign Out" : "⏻"}
             </button>
           </div>
