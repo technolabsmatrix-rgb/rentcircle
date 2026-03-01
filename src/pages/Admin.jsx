@@ -427,8 +427,13 @@ export default function AdminPortal() {
       ...(isNew ? { owner: "Master Admin", ownerEmail: "master@rentcircle.in" } : {}),
     };
     try {
-      if (data.id) await updateProductDb(data.id, data);
-      else await addProduct(data);
+      if (data.id) {
+        // Use raw supabase updateProduct directly to ensure all columns
+        // (including min_duration, min_duration_type) are written to DB
+        await updateProduct(data.id, data);
+        // Also update local state via hook
+        updateProductDb(data.id, data);
+      } else await addProduct(data);
       showNotif(data.id ? "Product updated!" : "Product added!"); closeModal();
     } catch (e) { showNotif("Save failed: " + e.message, "error"); }
   };
