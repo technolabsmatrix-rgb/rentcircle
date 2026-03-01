@@ -582,7 +582,7 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
       owner: user.name,
       ownerEmail: user.email,
       // All new products go to pending_approval; edits keep existing status
-      status: isEdit ? (editProduct.status || "active") : "pending_approval",
+      status: isEdit ? (editProduct.status || "active") : "pending",
     });
   };
 
@@ -835,9 +835,9 @@ function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDele
                   {p.photos?.length > 0
                     ? <img src={p.photos[0].url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                     : <span style={{ fontSize: "3.5rem" }}>{p.image}</span>}
-                  {p.status === "pending_approval"
+                  {p.status === "pending"
                     ? <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#fef3c7", color: "#92400e", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>⏳ Pending Review</span>
-                    : p.status === "rejected"
+                    : p.status === "inactive"
                     ? <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#fee2e2", color: "#991b1b", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>✕ Rejected</span>
                     : <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#dcfce7", color: "#166534", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>✓ Live</span>
                   }
@@ -1922,7 +1922,7 @@ export default function RentCircle() {
         badge: product.badge || "New",
         owner: product.owner,
         ownerEmail: product.ownerEmail,
-        status: product.status || "pending_approval",
+        status: product.status || "pending",
       };
 
       if (editingProduct) {
@@ -1935,7 +1935,7 @@ export default function RentCircle() {
         const inserted = await insertProduct(dbData);
         const newProduct = inserted ? fromDbProduct(inserted) : { ...product, id: Date.now() };
         setAllProducts(prev => [...prev, newProduct]);
-        if (product.status === "pending_approval") {
+        if (product.status === "pending") {
           showNotif("Product submitted for review! ⏳ Admin will approve it shortly.");
         } else {
           showNotif("Product listed successfully! 🚀");
@@ -1977,7 +1977,7 @@ export default function RentCircle() {
   const filteredProducts = useMemo(() => {
     let result = allProducts.filter(p => {
       // Never show pending_approval products in the public browse grid
-      if (p.status === "pending_approval" || p.status === "rejected") return false;
+      if (p.status === "pending" || p.status === "inactive") return false;
       const matchCat = selectedCategory === "All" || p.category === selectedCategory;
       const matchSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase()) || (p.description || "").toLowerCase().includes(searchQuery.toLowerCase());
       const matchMin = !priceMin || (p.priceDay || p.price) >= Number(priceMin);
