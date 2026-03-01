@@ -189,6 +189,8 @@ function dbPlanToFrontend(dbPlan) {
     subscribers:    dbPlan.subscribers,
     productExpiry:  dbPlan.productExpiry || null,
     ...ui,
+    // Use rentals from DB as listing limit, fall back to hardcoded UI default
+    listingLimit:   dbPlan.rentals != null ? (dbPlan.rentals === -1 ? 999 : dbPlan.rentals) : ui.listingLimit,
   };
 }
 
@@ -2710,7 +2712,7 @@ export default function RentCircle() {
                       📦 List up to {plan.listingLimit >= 999 ? "unlimited" : plan.listingLimit} products
                     </div>
                     {plan.productExpiry && (
-                      <div style={{ background: "rgba(0,0,0,0.04)", borderRadius: "8px", padding: "0.4rem 0.75rem", marginBottom: "0.75rem", fontSize: "0.8rem", fontWeight: 600, color: "#6b7280", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <div style={{ background: "rgba(0,0,0,0.06)", borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: "0.75rem", fontSize: "0.82rem", fontWeight: 700, color: plan.accent }}>
                         ⏳ Listings expire after {plan.productExpiry} days
                       </div>
                     )}
