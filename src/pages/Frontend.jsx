@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { fetchProducts, fetchTags, fetchFlags, fetchCustomFields, fetchPlans, fetchOrders, fromDbProduct, subscribeTo, supabase, onAuthChange } from "../lib/supabase";
-import { insertProduct, updateProduct as updateProductInDb, deleteProduct as deleteProductInDb } from "../lib/supabase";
+import { fetchProducts, fetchTags, fetchFlags, fetchCustomFields, fetchPlans, fromDbProduct, subscribeTo, supabase, onAuthChange } from "../lib/supabase";
+import { insertProduct, updateProduct as updateProductInDb, deleteProduct as deleteProductInDb, insertOrder, fetchOrders } from "../lib/supabase";
 
 // Fetch active categories from Supabase
 const fetchCategories = () =>
@@ -2892,7 +2892,41 @@ export default function RentCircle() {
                   </div>
                   <div style={{ paddingTop: "1.5rem", borderTop: "2px solid #f3f4f6", marginTop: "1rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: "1.2rem", marginBottom: "1rem" }}><span>Total</span><span>{INR(cartTotal)}</span></div>
-                    <button onClick={() => { showNotif("Order placed! 🎉"); setCart([]); setCartOpen(false); }} style={{ width: "100%", background: C.gold, border: "none", borderRadius: "12px", padding: "1rem", cursor: "pointer", fontWeight: 800, fontSize: "1rem", fontFamily: "'Outfit', sans-serif", color: C.dark }}>Pay via UPI / Card →</button>
+                    <button
+                      onClick={async () => {
+                        if (!user) { setCartOpen(false); setAuthOpen(true); return; }
+                        try {
+                          const today = new Date();
+                          const fmt = (d) => d.toISOString().split("T")[0];
+                          await Promise.all(cart.map(item => {
+                            const days = item.days || 1;
+                            const startDate = fmt(today);
+                            const end = new Date(today); end.setDate(end.getDate() + days);
+                            const endDate = fmt(end);
+                            const unitPrice = item.priceDay || item.price || 0;
+                            return insertOrder({
+                              product_id:  item.id,
+                              product:     item.name,
+                              user_id:     user.supabaseId || null,
+                              user_name:   user.name,
+                              user_email:  user.email,
+                              days,
+                              start_date:  startDate,
+                              end_date:    endDate,
+                              amount:      unitPrice * days,
+                              status:      "active",
+                            });
+                          }));
+                          setCart([]);
+                          setCartOpen(false);
+                          showNotif("Order placed! 🎉 Check Admin → Orders.");
+                        } catch (err) {
+                          showNotif("Failed to place order: " + (err.message || "Unknown error"), "error");
+                        }
+                      }}
+                      style={{ width: "100%", background: C.gold, border: "none", borderRadius: "12px", padding: "1rem", cursor: "pointer", fontWeight: 800, fontSize: "1rem", fontFamily: "'Outfit', sans-serif", color: C.dark }}>
+                      Pay via UPI / Card →
+                    </button>
                   </div>
                 </>
               )}
