@@ -1660,7 +1660,7 @@ export default function AdminPortal() {
               <h3 style={{ fontWeight: 800, fontSize: "1.15rem", marginBottom: "1.5rem" }}>{formData.id ? "✏️ Edit" : "➕ Add"} Plan</h3>
               <label style={s.lbl}>Plan Name</label>
               <input style={s.inp} value={formData.name || ""} onChange={e => setFormData(d => ({ ...d, name: e.target.value }))} placeholder="Plan name" />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <div>
                   <label style={s.lbl}>Price/month (₹)</label>
                   <input style={s.inp} type="number" value={formData.price || ""} onChange={e => setFormData(d => ({ ...d, price: +e.target.value }))} />
@@ -1688,17 +1688,17 @@ export default function AdminPortal() {
                     placeholder="-1"
                   />
                 </div>
-                <div>
-                  <label style={s.lbl}>Product Expiry (days)</label>
-                  <input
-                    style={s.inp}
-                    type="number"
-                    min="1"
-                    value={formData.productExpiry || ""}
-                    onChange={e => setFormData(d => ({ ...d, productExpiry: e.target.value ? +e.target.value : null }))}
-                    placeholder="e.g. 30"
-                  />
-                </div>
+              </div>
+              <div>
+                <label style={s.lbl}>Product Expiry (days)</label>
+                <input
+                  style={s.inp}
+                  type="number"
+                  min="1"
+                  value={formData.productExpiry || ""}
+                  onChange={e => setFormData(d => ({ ...d, productExpiry: e.target.value ? +e.target.value : null }))}
+                  placeholder="e.g. 30 (leave blank for no expiry)"
+                />
               </div>
               {formData.productExpiry && (
                 <div style={{ background: "rgba(249,115,22,0.08)", border: `1px solid ${COLORS.border}`, borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: "0.75rem", fontSize: "0.78rem", color: COLORS.muted }}>

@@ -528,9 +528,19 @@ function SubscriptionGate({ onClose, onSubscribe, user }) {
               {plan.popular && <div style={{ position: "absolute", top: "-13px", left: "50%", transform: "translateX(-50%)", background: plan.accent, color: "#fff", borderRadius: "50px", padding: "0.25rem 0.9rem", fontSize: "0.72rem", fontWeight: 700, whiteSpace: "nowrap" }}>MOST POPULAR</div>}
               <div style={{ fontWeight: 900, fontSize: "1.15rem", marginBottom: "0.15rem" }}>{plan.name}</div>
               <div style={{ fontSize: "1.9rem", fontWeight: 900, margin: "0.5rem 0" }}>{INR(plan.price)}<span style={{ fontSize: "0.85rem", fontWeight: 400, color: C.muted }}>/mo</span></div>
-              <div style={{ background: "rgba(0,0,0,0.06)", borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: "1rem", fontSize: "0.82rem", fontWeight: 700, color: plan.accent }}>
+              <div style={{ background: "rgba(0,0,0,0.06)", borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: plan.rentals !== undefined || plan.productExpiry ? "0.5rem" : "1rem", fontSize: "0.82rem", fontWeight: 700, color: plan.accent }}>
                 📦 List up to {plan.listingLimit >= 999 ? "unlimited" : plan.listingLimit} products
               </div>
+              {plan.rentals !== undefined && (
+                <div style={{ background: "rgba(0,0,0,0.06)", borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: plan.productExpiry ? "0.5rem" : "1rem", fontSize: "0.82rem", fontWeight: 700, color: plan.accent }}>
+                  🔄 {plan.rentals === -1 ? "Unlimited rentals/month" : `${plan.rentals} rentals/month`}
+                </div>
+              )}
+              {plan.productExpiry && (
+                <div style={{ background: "rgba(0,0,0,0.06)", borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: "1rem", fontSize: "0.82rem", fontWeight: 700, color: plan.accent }}>
+                  ⏳ Listings expire after {plan.productExpiry} days
+                </div>
+              )}
               <ul style={{ listStyle: "none", padding: 0, margin: "0 0 1.25rem", flex: 1, display: "flex", flexDirection: "column", gap: "0.45rem" }}>
                 {plan.features.map(f => <li key={f} style={{ display: "flex", gap: "0.5rem", fontSize: "0.83rem", color: C.dark, alignItems: "flex-start" }}><span style={{ color: plan.accent, flexShrink: 0, marginTop: "1px" }}>✓</span>{f}</li>)}
               </ul>
