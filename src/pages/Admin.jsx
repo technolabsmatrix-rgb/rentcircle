@@ -74,17 +74,28 @@ const initialUsers = [
   { id: 5, name: "Sneha Patel", email: "sneha@email.com", plan: "Starter", status: "active", rentals: 12, joined: "Feb 2024", city: "Ahmedabad", phone: "+91 54321 09876", emailVerified: true, phoneVerified: true },
 ];
 
-const initialOrders = Array.from({ length: 12 }, (_, i) => ({
-  id: `RC${10045 + i}`,
-  product: initialProducts[i % initialProducts.length].name,
-  productId: initialProducts[i % initialProducts.length].id,
-  user: initialUsers[i % initialUsers.length].name,
-  userEmail: initialUsers[i % initialUsers.length].email,
-  amount: initialProducts[i % initialProducts.length].price * ((i % 7) + 1),
-  days: (i % 7) + 1,
-  status: ["active", "active", "active", "pending", "completed"][i % 5],
-  date: `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i % 12]} ${2024 + (i % 2)}`,
-}));
+const initialOrders = Array.from({ length: 12 }, (_, i) => {
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const year = 2024 + (i % 2);
+  const startDay = (i * 3 + 1) % 28 + 1;
+  const days = (i % 7) + 1;
+  const startDate = `${String(startDay).padStart(2,"0")} ${months[i % 12]} ${year}`;
+  const endDay = startDay + days;
+  const endDate = `${String(endDay > 28 ? endDay - 28 : endDay).padStart(2,"0")} ${months[(i + (endDay > 28 ? 1 : 0)) % 12]} ${year}`;
+  return {
+    id: `RC${10045 + i}`,
+    product: initialProducts[i % initialProducts.length].name,
+    productId: initialProducts[i % initialProducts.length].id,
+    user: initialUsers[i % initialUsers.length].name,
+    userEmail: initialUsers[i % initialUsers.length].email,
+    amount: initialProducts[i % initialProducts.length].price * ((i % 7) + 1),
+    days,
+    status: ["active", "active", "active", "pending", "completed"][i % 5],
+    date: `${months[i % 12]} ${year}`,
+    startDate,
+    endDate,
+  };
+});
 
 
 const COLORS = {
@@ -820,7 +831,7 @@ export default function AdminPortal() {
 
   /* ─── ORDERS ─── */
   const renderOrders = () => {
-    const oSortOpts = [["id","Order ID"],["product","Product"],["user","User"],["amount","Amount"],["days","Days"],["date","Date"]];
+    const oSortOpts = [["id","Order ID"],["product","Product"],["user","User"],["amount","Amount"],["days","Days"],["startDate","Start Date"],["endDate","End Date"]];
     const ORDER_STATUSES = ["active","pending","completed","suspended","cancelled"];
     const statusColors = { active: COLORS.green, pending: COLORS.gold, completed: COLORS.blue, suspended: COLORS.red, cancelled: COLORS.muted };
     return (
@@ -834,20 +845,21 @@ export default function AdminPortal() {
             onClear={() => { setOSearch(""); setOSort(""); setOStatusFilter(""); setOPage(1); }}
             activeFiltersCount={oStatusFilter ? 1 : 0}
           />
-          <div style={s.th("0.9fr 2fr 1.8fr 0.6fr 1.1fr 0.7fr 1.5fr")}>
+          <div style={s.th("0.9fr 1.8fr 1.6fr 0.5fr 1fr 1.1fr 1.1fr 1.4fr")}>
             <SortableCol label="Order ID" field="id" sortField={oSort} sortDir={oDir} onSort={(f,d) => { setOSort(f); setODir(d); }} />
             <SortableCol label="Product" field="product" sortField={oSort} sortDir={oDir} onSort={(f,d) => { setOSort(f); setODir(d); }} />
             <SortableCol label="User" field="user" sortField={oSort} sortDir={oDir} onSort={(f,d) => { setOSort(f); setODir(d); }} />
             <span>Days</span>
             <SortableCol label="Amount" field="amount" sortField={oSort} sortDir={oDir} onSort={(f,d) => { setOSort(f); setODir(d); }} />
-            <SortableCol label="Date" field="date" sortField={oSort} sortDir={oDir} onSort={(f,d) => { setOSort(f); setODir(d); }} />
+            <SortableCol label="Start Date" field="startDate" sortField={oSort} sortDir={oDir} onSort={(f,d) => { setOSort(f); setODir(d); }} />
+            <SortableCol label="End Date" field="endDate" sortField={oSort} sortDir={oDir} onSort={(f,d) => { setOSort(f); setODir(d); }} />
             <span>Status</span>
           </div>
           {filteredOrders.length === 0 && <div style={{ padding: "3rem", textAlign: "center", color: COLORS.muted }}>No orders match your search</div>}
           {filteredOrders.slice((oPage-1)*oPerPage, oPage*oPerPage).map(order => {
             const orderUser = users.find(u => u.email === order.userEmail);
             return (
-              <div key={order.id} style={s.tr("0.9fr 2fr 1.8fr 0.6fr 1.1fr 0.7fr 1.5fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
+              <div key={order.id} style={s.tr("0.9fr 1.8fr 1.6fr 0.5fr 1fr 1.1fr 1.1fr 1.4fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
                 <span style={{ color: COLORS.accent, fontWeight: 700, fontSize: "0.82rem" }}>{order.id}</span>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: "0.88rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{order.product}</div>
@@ -864,7 +876,14 @@ export default function AdminPortal() {
                 </div>
                 <span style={{ fontSize: "0.85rem" }}>{order.days}d</span>
                 <span style={{ color: COLORS.green, fontWeight: 700 }}>{INR(order.amount)}</span>
-                <span style={{ fontSize: "0.78rem", color: COLORS.muted }}>{order.date}</span>
+                <div>
+                  <div style={{ fontSize: "0.78rem", color: COLORS.text, fontWeight: 500 }}>{order.startDate}</div>
+                  <div style={{ fontSize: "0.67rem", color: COLORS.muted }}>Start</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "0.78rem", color: COLORS.text, fontWeight: 500 }}>{order.endDate}</div>
+                  <div style={{ fontSize: "0.67rem", color: COLORS.muted }}>End</div>
+                </div>
                 {/* Inline status changer */}
                 <div style={{ position: "relative" }}>
                   <select
