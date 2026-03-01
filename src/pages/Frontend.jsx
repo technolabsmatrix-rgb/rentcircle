@@ -1767,7 +1767,7 @@ export default function RentCircle() {
   useEffect(() => {
     // ── Initial load ──────────────────────────────────────
     fetchProducts()
-      .then(rows => setAllProducts(rows))
+      .then(rows => setAllProducts(rows.map(fromDbProduct)))
       .catch(() => {})
     fetchTags()
       .then(rows => setAdminTags(rows.filter(t => t.active)))
@@ -1840,7 +1840,7 @@ export default function RentCircle() {
       ),
       subscribeTo('products', () =>
         fetchProducts()
-          .then(rows => setAllProducts(rows))
+          .then(rows => setAllProducts(rows.map(fromDbProduct)))
           .catch(() => {})
       ),
       subscribeTo('tags', () =>
@@ -2185,11 +2185,13 @@ export default function RentCircle() {
         {/* ── FEATURED BANNER ── */}
         {activeTab === "home" && (() => {
           const featTag = adminTags.find(t => t.isBannerTag && t.active);
-          const featuredProducts = featTag
-            ? allProducts.filter(p => (p.tags || []).includes(featTag.id)).slice(0, featTag.maxProducts || 4)
-            : allProducts.slice(0, 4);
+          // Only show banner if a banner tag exists AND at least 1 product has it assigned
+          if (!featTag) return null;
+          const featuredProducts = allProducts.filter(p =>
+            (p.tags || []).map(Number).includes(Number(featTag.id))
+          ).slice(0, featTag.maxProducts || 4);
           if (!featuredProducts.length) return null;
-          const tag = featTag || { name: "Featured", emoji: "🌟", color: "#b45309", bg: "rgba(245,158,11,0.18)" };
+          const tag = featTag;
           return (
             <div style={{ background: `linear-gradient(135deg, #1a0a3e 0%, #0f172a 60%, #1a1a2e 100%)`, padding: "4rem 2rem", position: "relative", overflow: "hidden" }}>
               {/* Background glows */}
@@ -2223,8 +2225,12 @@ export default function RentCircle() {
                       onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = ""; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}>
                       {/* Rank badge */}
                       <div style={{ position: "absolute", top: "1rem", right: "1rem", width: "28px", height: "28px", background: idx === 0 ? C.gold : "rgba(255,255,255,0.12)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, color: idx === 0 ? C.dark : "rgba(255,255,255,0.6)" }}>#{idx + 1}</div>
-                      {/* Emoji icon */}
-                      <div style={{ width: "60px", height: "60px", background: "rgba(255,255,255,0.08)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", marginBottom: "1rem", border: "1px solid rgba(255,255,255,0.1)" }}>{p.image}</div>
+                      {/* Photo or emoji icon */}
+                      <div style={{ width: "60px", height: "60px", background: "rgba(255,255,255,0.08)", borderRadius: "16px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", marginBottom: "1rem", border: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }}>
+                        {p.photos?.length > 0
+                          ? <img src={p.photos[0].url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          : p.image}
+                      </div>
                       {/* Name & category */}
                       <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.3rem" }}>{p.category}</div>
                       <div style={{ color: "#fff", fontWeight: 800, fontSize: "1rem", marginBottom: "0.4rem", lineHeight: 1.3, paddingRight: "2rem" }}>{p.name}</div>
