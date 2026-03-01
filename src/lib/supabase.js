@@ -100,16 +100,23 @@ export const deleteTag = (id) =>
 // ─── Plans ────────────────────────────────────────────────
 export const fetchPlans = () =>
   q('plans', () => supabase.from('plans').select('*').order('price'))
+    .then(rows => rows.map(p => ({
+      ...p,
+      productExpiry: p.product_expiry ?? null,
+    })))
 
 export const upsertPlan = (plan) => {
   // Strip frontend-only UI fields before sending to DB
-  const { color, accent, listingLimit, popular, ...dbPlan } = plan
+  const { color, accent, listingLimit, popular, productExpiry, ...dbPlan } = plan
   return q('plans/upsert', () =>
     supabase.from('plans')
-      .upsert(dbPlan, { onConflict: 'id' })
+      .upsert({ ...dbPlan, product_expiry: productExpiry ?? null }, { onConflict: 'id' })
       .select()
       .single()
-  )
+  ).then(p => ({
+    ...p,
+    productExpiry: p.product_expiry ?? null,
+  }))
 }
 
 // ─── Profiles ─────────────────────────────────────────────
