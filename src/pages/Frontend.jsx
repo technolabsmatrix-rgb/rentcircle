@@ -681,6 +681,7 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
     const e = {};
     if (!form.name?.trim()) e.name = "Product name is required";
     if (!form.priceDay || Number(form.priceDay) <= 0) e.priceDay = "Price per day is required and must be > 0";
+    if (!form.location?.trim()) e.location = "City is required";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -704,7 +705,7 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
       unit: "day",
       owner: user.name,
       ownerEmail: user.email,
-      status: isEdit ? (editProduct.status || "active") : "pending",
+      status: isEdit ? (editProduct.status || "active") : "active",
       badge: isEdit ? (editProduct.badge || "New") : "Pending Review",
     });
   };
@@ -805,8 +806,9 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Location / City</label>
-                  <input style={inp("loc")} placeholder="e.g. Mumbai" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} onFocus={() => setFocused("loc")} onBlur={() => setFocused(null)} />
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Location / City *</label>
+                  <input style={inp("location")} placeholder="e.g. Mumbai" value={form.location} onChange={e => { setForm(f => ({ ...f, location: e.target.value })); setErrors(ev => ({ ...ev, location: "" })); }} onFocus={() => setFocused("location")} onBlur={() => setFocused(null)} />
+                  <ErrMsg field="location" />
                 </div>
               </div>
               {/* Tags — master user only */}
@@ -1906,6 +1908,8 @@ export default function RentCircle() {
   const [priceMin, setPriceMin] = useState(""); const [priceMax, setPriceMax] = useState("");
   const [filterTag, setFilterTag] = useState(""); const [showFilters, setShowFilters] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [selectedCity, setSelectedCity] = useState("");
+  const [availableCities, setAvailableCities] = useState([]);
 
   // Load from Supabase (falls back to defaults if unavailable)
   const [flags, setFlags] = useState({ subscriptionPlans: true, tagging: true, smartSearch: true, phoneVerification: true, emailVerification: true, customFields: true });
@@ -1917,10 +1921,18 @@ export default function RentCircle() {
   useEffect(() => {
     // ── Initial load ──────────────────────────────────────
     const _cached = readCache();
+    // Helper to extract unique cities from product list
+    const extractCities = (rows) => {
+      const cities = [...new Set(rows.map(p => p.location).filter(Boolean).map(c => c.trim()).filter(c => c.length > 0))].sort();
+      setAvailableCities(cities);
+    };
+
     if (!_cached || _cached.stale) {
       fetchProducts()
-        .then(rows => { setAllProducts(rows); writeCache(rows); })
+        .then(rows => { setAllProducts(rows); writeCache(rows); extractCities(rows); })
         .catch(() => {})
+    } else {
+      extractCities(_cached.data || []);
     }
     fetchTags()
       .then(rows => setAdminTags(rows.filter(t => t.active)))
@@ -2076,7 +2088,7 @@ export default function RentCircle() {
         reviews: product.reviews ?? 0,
         owner: product.owner,
         ownerEmail: product.ownerEmail,
-        status: "pending",
+        status: "active",
         badge: "Pending Review",
       };
 
@@ -2123,16 +2135,23 @@ export default function RentCircle() {
     setSelectedProduct(null);
   };
 
+  // Keep availableCities in sync with allProducts
+  useEffect(() => {
+    const cities = [...new Set(allProducts.map(p => p.location).filter(Boolean).map(c => c.trim()).filter(c => c.length > 0))].sort();
+    setAvailableCities(cities);
+  }, [allProducts]);
+
   const filteredProducts = useMemo(() => {
     let result = allProducts.filter(p => {
       // Never show products pending admin approval in the public browse grid
       if (p.badge === "Pending Review") return false;
+      const matchCity = !selectedCity || (p.location || "").trim().toLowerCase() === selectedCity.toLowerCase();
       const matchCat = selectedCategory === "All" || p.category === selectedCategory;
       const matchSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase()) || (p.description || "").toLowerCase().includes(searchQuery.toLowerCase());
       const matchMin = !priceMin || (p.priceDay || p.price) >= Number(priceMin);
       const matchMax = !priceMax || (p.priceDay || p.price) <= Number(priceMax);
       const matchTag = !filterTag || (p.tags || []).includes(Number(filterTag)) || (p.badge && p.badge.toLowerCase().includes(filterTag.toLowerCase()));
-      return matchCat && matchSearch && matchMin && matchMax && matchTag;
+      return matchCity && matchCat && matchSearch && matchMin && matchMax && matchTag;
     });
     switch (sortBy) {
       case "price_asc": result = [...result].sort((a,b) => (a.priceDay||a.price||0) - (b.priceDay||b.price||0)); break;
@@ -2142,7 +2161,7 @@ export default function RentCircle() {
       default: result = [...result].sort((a,b) => (b.reviews||0) - (a.reviews||0)); break;
     }
     return result;
-  }, [allProducts, selectedCategory, searchQuery, priceMin, priceMax, filterTag, sortBy]);
+  }, [allProducts, selectedCity, selectedCategory, searchQuery, priceMin, priceMax, filterTag, sortBy]);
   const cartTotal = cart.reduce((s, i) => s + (i.priceDay || i.price || 0) * i.days, 0);
   const currentPlan = plans.find(p => p.id === user?.subscription);
   const navStyle = (tab) => ({ cursor: "pointer", opacity: activeTab === tab ? 1 : 0.65, fontSize: "0.88rem", fontWeight: activeTab === tab ? 700 : 500, color: "#fff", paddingBottom: "2px", borderBottom: activeTab === tab ? `2px solid ${C.gold}` : "2px solid transparent", transition: "all 0.2s", whiteSpace: "nowrap" });
@@ -2406,7 +2425,7 @@ export default function RentCircle() {
               <div>
                 <h2 style={{ fontSize: "2rem", fontWeight: 800, marginBottom: "0.25rem" }}>Browse Products</h2>
                 <p style={{ color: C.muted }}>
-                  {filteredProducts.length} products {searchQuery || selectedCategory !== "All" || priceMin || priceMax || filterTag ? "found" : "available"}
+                  {filteredProducts.length} products {searchQuery || selectedCategory !== "All" || priceMin || priceMax || filterTag || selectedCity ? "found" : "available"}{selectedCity ? ` in ${selectedCity}` : ""}
                 </p>
               </div>
               {/* List Your Product CTA */}
@@ -2441,8 +2460,8 @@ export default function RentCircle() {
                     ⚙ Filters {(priceMin || priceMax || filterTag) ? <span style={{ background: C.gold, color: C.dark, borderRadius: "50%", width: "18px", height: "18px", fontSize: "0.68rem", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>{[priceMin,priceMax,filterTag].filter(Boolean).length}</span> : ""}
                   </button>
                   {/* Quick clear */}
-                  {(searchQuery || selectedCategory !== "All" || priceMin || priceMax || filterTag) && (
-                    <button onClick={() => { setSearchQuery(""); setSelectedCategory("All"); setPriceMin(""); setPriceMax(""); setFilterTag(""); setSortBy("popular"); }}
+                  {(searchQuery || selectedCategory !== "All" || priceMin || priceMax || filterTag || selectedCity) && (
+                    <button onClick={() => { setSearchQuery(""); setSelectedCategory("All"); setPriceMin(""); setPriceMax(""); setFilterTag(""); setSortBy("popular"); setSelectedCity(""); }}
                       style={{ padding: "0.6rem 0.9rem", border: "none", borderRadius: "12px", background: "rgba(239,68,68,0.08)", color: C.red, fontFamily: "'Outfit', sans-serif", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer" }}>
                       ✕ Clear All
                     </button>
@@ -2515,7 +2534,7 @@ export default function RentCircle() {
                 <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🔍</div>
                 <h3 style={{ fontWeight: 800, marginBottom: "0.5rem" }}>No products found</h3>
                 <p style={{ color: C.muted, marginBottom: "1.5rem" }}>Try adjusting your filters or search term</p>
-                <button onClick={() => { setSearchQuery(""); setSelectedCategory("All"); setPriceMin(""); setPriceMax(""); setFilterTag(""); }} style={{ background: C.dark, color: "#fff", border: "none", borderRadius: "12px", padding: "0.8rem 2rem", cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>Clear Filters</button>
+                <button onClick={() => { setSearchQuery(""); setSelectedCategory("All"); setPriceMin(""); setPriceMax(""); setFilterTag(""); setSelectedCity(""); }} style={{ background: C.dark, color: "#fff", border: "none", borderRadius: "12px", padding: "0.8rem 2rem", cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>Clear Filters</button>
               </div>
             )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.5rem" }}>
@@ -2688,6 +2707,23 @@ export default function RentCircle() {
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }}>
+            {/* City selector */}
+            {availableCities.length > 0 && (
+              <div className="rc-hide-sm" style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <span style={{ position: "absolute", left: "0.65rem", fontSize: "0.9rem", pointerEvents: "none", zIndex: 1 }}>📍</span>
+                <select
+                  value={selectedCity}
+                  onChange={e => setSelectedCity(e.target.value)}
+                  style={{ paddingLeft: "2rem", paddingRight: "1.5rem", paddingTop: "0.5rem", paddingBottom: "0.5rem", border: `1.5px solid ${selectedCity ? C.dark : C.border}`, borderRadius: "10px", background: selectedCity ? C.dark : "#fff", color: selectedCity ? "#fff" : C.dark, fontFamily: "'Outfit', sans-serif", fontWeight: selectedCity ? 700 : 500, fontSize: "0.88rem", cursor: "pointer", outline: "none", appearance: "none", WebkitAppearance: "none", transition: "all 0.2s", minWidth: "130px" }}
+                >
+                  <option value="">All Cities</option>
+                  {availableCities.map(city => <option key={city} value={city}>{city}</option>)}
+                </select>
+                {selectedCity && (
+                  <button onClick={() => setSelectedCity("")} style={{ position: "absolute", right: "0.4rem", background: "rgba(255,255,255,0.25)", border: "none", borderRadius: "50%", width: "18px", height: "18px", cursor: "pointer", color: "#fff", fontSize: "0.6rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, padding: 0 }}>✕</button>
+                )}
+              </div>
+            )}
             {user && (
               <button onClick={handleListProduct} className="rc-hide-sm" style={{ background: "rgba(124,58,237,0.08)", border: "1.5px solid rgba(124,58,237,0.3)", borderRadius: "10px", padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700, fontSize: "0.95rem", color: "#7c3aed", fontFamily: "'Outfit', sans-serif", display: "flex", alignItems: "center", gap: "0.4rem" }}>
                 🏪 {(user.subscription || user.isMaster) ? "List Product" : "List 🔒"}

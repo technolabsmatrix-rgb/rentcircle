@@ -392,9 +392,27 @@ export default function AdminPortal() {
     if (!formData.name?.trim()) errs.name = "Product name is required";
     if (!priceDay || Number(priceDay) <= 0) errs.priceDay = "Price per day is required";
     if (formData.stock === "" || formData.stock === undefined || formData.stock === null) errs.stock = "Stock is required";
+    if (!formData.location?.trim()) errs.location = "City is required";
     if (Object.keys(errs).length) { setModalErrors(errs); return; }
     setModalErrors({});
-    const data = { ...formData, priceDay, price: priceDay, priceMonth: formData.priceMonth || Math.round(priceDay * 25), priceYear: formData.priceYear || Math.round(priceDay * 280), tags: formData.tags || [] };
+    // Strip internal step/photos state, build clean photos array
+    const { _step, _photos, ...rest } = formData;
+    const photos = (_photos || []).map(p => p.url || p);
+    const isNew = !rest.id;
+    const data = {
+      ...rest,
+      priceDay, price: priceDay,
+      priceMonth: formData.priceMonth || Math.round(priceDay * 25),
+      priceYear: formData.priceYear || Math.round(priceDay * 280),
+      tags: formData.tags || [],
+      image: formData.image || "📦",
+      condition: formData.condition || "Excellent",
+      status: formData.status || "active",
+      badge: formData.badge !== undefined ? formData.badge : "New",
+      photos,
+      // Admin-added products are always owned by Master Admin
+      ...(isNew ? { owner: "Master Admin", ownerEmail: "master@rentcircle.in" } : {}),
+    };
     try {
       if (data.id) await updateProductDb(data.id, data);
       else await addProduct(data);
@@ -662,7 +680,7 @@ export default function AdminPortal() {
         {/* ── Approved Products Grid ── */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div><h2 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Products</h2><p style={{ color: COLORS.muted, fontSize: "0.85rem" }}>{filteredProducts.length} of {products.filter(p => p.badge !== "Pending Review").length} products</p></div>
-          <button style={s.btn("primary")} onClick={() => openModal("product", { price: 999, stock: 1, category: "Electronics", tags: [] })}>+ Add Product</button>
+          <button style={s.btn("primary")} onClick={() => openModal("product", { price: 999, priceDay: 999, stock: 1, category: "Electronics", tags: [], image: "📦", condition: "Excellent", status: "active", badge: "New", _step: 1, _photos: [] })}>+ Add Product</button>
         </div>
         <div style={s.card}>
           <GridToolbar
@@ -717,7 +735,7 @@ export default function AdminPortal() {
                 {(!featureFlags.tagging || !(p.tags || []).length) && <span style={{ color: COLORS.muted, fontSize: "0.72rem" }}>—</span>}
               </div>
               <div style={{ display: "flex", gap: "0.4rem" }}>
-                <button style={{ ...s.btn("secondary"), padding: "0.35rem 0.7rem", fontSize: "0.78rem" }} onClick={() => openModal("product", { ...p, tags: p.tags || [] })}>Edit</button>
+                <button style={{ ...s.btn("secondary"), padding: "0.35rem 0.7rem", fontSize: "0.78rem" }} onClick={() => openModal("product", { ...p, tags: p.tags || [], image: p.image || "📦", condition: p.condition || "Excellent", status: p.status || "active", badge: p.badge || "New", _step: 1, _photos: (p.photos || []).map(u => ({ id: Math.random(), url: u.url || u, name: "" })) })}>Edit</button>
                 <button style={{ ...s.btn("danger"), padding: "0.35rem 0.7rem", fontSize: "0.78rem" }} onClick={async () => {
                   if (!window.confirm(`Delete "${p.name}"?`)) return;
                   try {
@@ -1215,92 +1233,306 @@ export default function AdminPortal() {
           </div>
         )}
 
-        {/* Product Modal */}
-        {modal === "product" && (
-          <div style={s.modal} onClick={closeModal}>
-            <div style={{ ...s.mbox, maxWidth: "580px" }} onClick={e => e.stopPropagation()}>
-              <h3 style={{ fontWeight: 800, fontSize: "1.15rem", marginBottom: "1.5rem" }}>{formData.id ? "✏️ Edit" : "➕ Add"} Product</h3>
-              <label style={s.lbl}>Product Name *</label>
-              <input
-                style={{ ...s.inp, ...(modalErrors.name ? { border: `1.5px solid ${COLORS.red}`, background: "rgba(239,68,68,0.05)" } : {}) }}
-                value={formData.name || ""}
-                onChange={e => { setFormData(d => ({ ...d, name: e.target.value })); if (modalErrors.name) setModalErrors(me => ({ ...me, name: "" })); }}
-                placeholder="e.g. Sony A7 III Camera"
-              />
-              {modalErrors.name && <div style={{ color: COLORS.red, fontSize: "0.75rem", marginTop: "-0.6rem", marginBottom: "0.8rem", fontWeight: 600 }}>⚠ {modalErrors.name}</div>}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div><label style={s.lbl}>Category</label>
-                  <select style={selectStyle} value={formData.category || ""} onChange={e => setFormData(d => ({ ...d, category: e.target.value }))}>
-                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                  </select>
+        {/* Product Modal — rich 3-step */}
+        {modal === "product" && (() => {
+          const EMOJIS = ["📷","🚁","🚵","⛺","💻","🔭","🏄","🎮","🛶","🎸","🏋️","🎨","🔨","🚗","🛴","🎯","🏕️","📺","🎻","🧳"];
+          const pStep = formData._step || 1;
+          const setStep = (n) => setFormData(d => ({ ...d, _step: n }));
+          const pPhotos = formData._photos || [];
+          const setPhotos = (fn) => setFormData(d => ({ ...d, _photos: typeof fn === "function" ? fn(d._photos || []) : fn }));
+
+          // Mini PhotoUploader inline
+          const PhotoUp = () => {
+            const [dragOver, setDragOver] = useState(false);
+            const [activeIdx, setActiveIdx] = useState(0);
+            const readFiles = (files) => {
+              const remaining = 8 - pPhotos.length;
+              Array.from(files).slice(0, remaining).forEach(file => {
+                if (!file.type.startsWith("image/")) return;
+                const reader = new FileReader();
+                reader.onload = e => setPhotos(prev => [...prev, { id: Date.now() + Math.random(), url: e.target.result, name: file.name }]);
+                reader.readAsDataURL(file);
+              });
+            };
+            const remove = (id) => setPhotos(prev => prev.filter(p => p.id !== id));
+            const moveLeft = (idx) => { if (idx === 0) return; setPhotos(prev => { const a = [...prev]; [a[idx-1], a[idx]] = [a[idx], a[idx-1]]; return a; }); };
+            const moveRight = (idx) => { if (idx >= pPhotos.length-1) return; setPhotos(prev => { const a = [...prev]; [a[idx+1], a[idx]] = [a[idx], a[idx+1]]; return a; }); };
+            return (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                  <label style={s.lbl}>Product Photos</label>
+                  <span style={{ fontSize: "0.75rem", color: COLORS.muted }}>{pPhotos.length}/8 photos</span>
                 </div>
-                <div>
-                  <label style={s.lbl}>Stock *</label>
-                  <input
-                    style={{ ...s.inp, ...(modalErrors.stock ? { border: `1.5px solid ${COLORS.red}`, background: "rgba(239,68,68,0.05)" } : {}) }}
-                    type="number" min="0"
-                    value={formData.stock ?? ""}
-                    onChange={e => { setFormData(d => ({ ...d, stock: +e.target.value })); if (modalErrors.stock) setModalErrors(me => ({ ...me, stock: "" })); }}
-                    placeholder="e.g. 10"
-                  />
-                  {modalErrors.stock && <div style={{ color: COLORS.red, fontSize: "0.75rem", marginTop: "-0.6rem", marginBottom: "0.8rem", fontWeight: 600 }}>⚠ {modalErrors.stock}</div>}
-                </div>
-              </div>
-              <div style={{ background: COLORS.bg, border: `1px solid ${modalErrors.priceDay ? COLORS.red : COLORS.border}`, borderRadius: "12px", padding: "1rem 1.1rem", marginBottom: "1rem", transition: "border-color 0.2s" }}>
-                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: COLORS.accent, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.7rem" }}>💰 Pricing (INR)</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
+                {pPhotos.length === 0 ? (
+                  <label onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)}
+                    onDrop={e => { e.preventDefault(); setDragOver(false); readFiles(e.dataTransfer.files); }}
+                    style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: `2px dashed ${dragOver ? COLORS.accent : COLORS.border}`, borderRadius: "14px", padding: "2rem 1rem", cursor: "pointer", background: dragOver ? "rgba(249,115,22,0.05)" : COLORS.bg, gap: "0.6rem" }}>
+                    <input type="file" multiple accept="image/*" style={{ display: "none" }} onChange={e => readFiles(e.target.files)} />
+                    <div style={{ fontSize: "2rem" }}>📸</div>
+                    <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>Drop photos or click to upload</div>
+                    <div style={{ color: COLORS.muted, fontSize: "0.78rem" }}>JPG, PNG, WEBP · Up to 8 · First is cover</div>
+                    <div style={{ background: COLORS.accent, color: "#fff", borderRadius: "8px", padding: "0.4rem 1rem", fontSize: "0.82rem", fontWeight: 700 }}>Choose Photos</div>
+                  </label>
+                ) : (
                   <div>
-                    <label style={s.lbl}>Per Day *</label>
-                    <input
-                      style={{ ...s.inp, marginBottom: 0, ...(modalErrors.priceDay ? { border: `1.5px solid ${COLORS.red}`, background: "rgba(239,68,68,0.05)" } : {}) }}
-                      type="number" min="1" placeholder="999"
-                      value={formData.priceDay || formData.price || ""}
-                      onChange={e => { setFormData(d => ({ ...d, priceDay: +e.target.value, price: +e.target.value })); if (modalErrors.priceDay) setModalErrors(me => ({ ...me, priceDay: "" })); }}
-                    />
-                  </div>
-                  <div><label style={s.lbl}>Per Month</label><input style={{ ...s.inp, marginBottom: 0 }} type="number" placeholder="auto" value={formData.priceMonth || ""} onChange={e => setFormData(d => ({ ...d, priceMonth: +e.target.value }))} /></div>
-                  <div><label style={s.lbl}>Per Year</label><input style={{ ...s.inp, marginBottom: 0 }} type="number" placeholder="auto" value={formData.priceYear || ""} onChange={e => setFormData(d => ({ ...d, priceYear: +e.target.value }))} /></div>
-                </div>
-                {modalErrors.priceDay && <div style={{ color: COLORS.red, fontSize: "0.75rem", marginTop: "0.5rem", fontWeight: 600 }}>⚠ {modalErrors.priceDay}</div>}
-                <div style={{ fontSize: "0.72rem", color: COLORS.muted, marginTop: "0.5rem" }}>Month = ×25, Year = ×280 of daily if left blank</div>
-              </div>
-              {/* Tags assignment */}
-              {featureFlags.tagging && (
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={s.lbl}>Assign Tags</label>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                    {tags.filter(t => t.active).map(tag => {
-                      const selected = (formData.tags || []).includes(tag.id);
-                      const isBanner = tag.isBannerTag;
-                      const bannerCount = isBanner ? products.filter(p => p.id !== formData.id && (p.tags || []).includes(tag.id)).length : 0;
-                      const limitReached = isBanner && !selected && bannerCount >= (tag.maxProducts || 4);
-                      return (
-                        <div key={tag.id}
-                          onClick={() => !limitReached && setFormData(d => ({ ...d, tags: selected ? (d.tags || []).filter(x => x !== tag.id) : [...(d.tags || []), tag.id] }))}
-                          title={limitReached ? `Max ${tag.maxProducts || 4} products allowed for "${tag.name}" banner tag` : ""}
-                          style={{ background: selected ? tag.bg : limitReached ? "#f3f4f6" : COLORS.bg, color: selected ? tag.color : limitReached ? "#9ca3af" : COLORS.muted, border: `2px solid ${selected ? tag.color : limitReached ? "#e5e7eb" : COLORS.border}`, borderRadius: "8px", padding: "0.3rem 0.7rem", cursor: limitReached ? "not-allowed" : "pointer", fontSize: "0.82rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.25rem", transition: "all 0.15s", opacity: limitReached ? 0.55 : 1, position: "relative" }}>
-                          {tag.emoji} {tag.name}
-                          {isBanner && <span style={{ background: selected ? tag.color : "#e5e7eb", color: selected ? "#fff" : "#6b7280", borderRadius: "10px", padding: "0 0.4rem", fontSize: "0.68rem", fontWeight: 800, marginLeft: "0.2rem" }}>{bannerCount + (selected ? 1 : 0)}/{tag.maxProducts || 4}</span>}
-                          {selected && " ✓"}
-                          {limitReached && <span style={{ fontSize: "0.72rem", marginLeft: "0.2rem" }}>🔒</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {(formData.tags || []).some(tid => { const t = tags.find(x => x.id === tid); return t?.isBannerTag; }) && (
-                    <div style={{ marginTop: "0.5rem", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "8px", padding: "0.45rem 0.75rem", fontSize: "0.78rem", color: "#b45309", fontWeight: 600 }}>
-                      🌟 This product will appear in the Featured banner on the homepage
+                    <div style={{ position: "relative", borderRadius: "12px", overflow: "hidden", marginBottom: "0.6rem", border: `1px solid ${COLORS.border}` }}>
+                      <img src={pPhotos[activeIdx]?.url} alt="" style={{ width: "100%", height: "180px", objectFit: "cover", display: "block" }} />
+                      {activeIdx === 0 && <div style={{ position: "absolute", top: "0.5rem", left: "0.5rem", background: COLORS.accent, color: "#fff", borderRadius: "5px", padding: "0.15rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>⭐ Cover</div>}
+                      <div style={{ position: "absolute", top: "0.5rem", right: "0.5rem", display: "flex", gap: "0.3rem" }}>
+                        <button onClick={() => moveLeft(activeIdx)} disabled={activeIdx === 0} style={{ width: "26px", height: "26px", borderRadius: "7px", border: "none", background: "rgba(0,0,0,0.55)", color: "#fff", cursor: activeIdx === 0 ? "default" : "pointer", fontSize: "0.7rem", opacity: activeIdx === 0 ? 0.3 : 1 }}>←</button>
+                        <button onClick={() => moveRight(activeIdx)} disabled={activeIdx === pPhotos.length-1} style={{ width: "26px", height: "26px", borderRadius: "7px", border: "none", background: "rgba(0,0,0,0.55)", color: "#fff", cursor: activeIdx === pPhotos.length-1 ? "default" : "pointer", fontSize: "0.7rem", opacity: activeIdx === pPhotos.length-1 ? 0.3 : 1 }}>→</button>
+                        <button onClick={() => remove(pPhotos[activeIdx].id)} style={{ width: "26px", height: "26px", borderRadius: "7px", border: "none", background: "rgba(220,38,38,0.85)", color: "#fff", cursor: "pointer", fontSize: "0.7rem" }}>✕</button>
+                      </div>
                     </div>
+                    <div style={{ display: "flex", gap: "0.4rem", overflowX: "auto" }}>
+                      {pPhotos.map((p, i) => (
+                        <div key={p.id} onClick={() => setActiveIdx(i)} style={{ flexShrink: 0, width: "54px", height: "54px", borderRadius: "8px", overflow: "hidden", border: `2px solid ${i === activeIdx ? COLORS.accent : COLORS.border}`, cursor: "pointer" }}>
+                          <img src={p.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        </div>
+                      ))}
+                      {pPhotos.length < 8 && (
+                        <label style={{ flexShrink: 0, width: "54px", height: "54px", borderRadius: "8px", border: `2px dashed ${COLORS.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: COLORS.bg, fontSize: "1.2rem", color: COLORS.muted }}>
+                          <input type="file" multiple accept="image/*" style={{ display: "none" }} onChange={e => readFiles(e.target.files)} />+
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          };
+
+          return (
+            <div style={s.modal} onClick={closeModal}>
+              <div style={{ background: COLORS.surface, borderRadius: "24px", width: "100%", maxWidth: "600px", maxHeight: "92vh", display: "flex", flexDirection: "column", overflow: "hidden", border: `1px solid ${COLORS.border}`, boxShadow: "0 32px 80px rgba(0,0,0,0.25)" }} onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div style={{ background: `linear-gradient(135deg, ${COLORS.text}, #2d2d4e)`, padding: "1.5rem 2rem", color: "#fff", flexShrink: 0 }}>
+                  <button onClick={closeModal} style={{ float: "right", border: "none", background: "rgba(255,255,255,0.15)", borderRadius: "50%", width: "30px", height: "30px", cursor: "pointer", color: "#fff", fontSize: "0.85rem" }}>✕</button>
+                  <div style={{ fontSize: "1.4rem", marginBottom: "0.3rem" }}>{formData.id ? "✏️" : "➕"}</div>
+                  <h3 style={{ fontWeight: 900, fontSize: "1.2rem", margin: 0 }}>{formData.id ? "Edit Product" : "Add New Product"}</h3>
+                  <p style={{ opacity: 0.6, fontSize: "0.82rem", margin: "0.2rem 0 0.9rem" }}>Product goes live immediately — no approval needed</p>
+                  {/* Step progress */}
+                  <div style={{ display: "flex", gap: "0.4rem" }}>
+                    {[1,2,3].map(n => <div key={n} style={{ height: "3px", flex: 1, borderRadius: "2px", background: pStep >= n ? COLORS.gold : "rgba(255,255,255,0.2)", transition: "background 0.3s" }} />)}
+                  </div>
+                  <div style={{ display: "flex", gap: "1.5rem", marginTop: "0.6rem" }}>
+                    {[["1","Details"],["2","Photos"],["3","Extras"]].map(([n, lbl]) => (
+                      <span key={n} style={{ fontSize: "0.72rem", opacity: pStep >= Number(n) ? 1 : 0.4, fontWeight: pStep === Number(n) ? 700 : 400 }}>{n}. {lbl}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div style={{ padding: "1.5rem 2rem", overflowY: "auto", flex: 1 }}>
+
+                  {/* ── Step 1: Details ── */}
+                  {pStep === 1 && (
+                    <>
+                      <div style={{ marginBottom: "1rem" }}>
+                        <label style={s.lbl}>Product Name *</label>
+                        <input
+                          style={{ ...s.inp, marginBottom: 0, ...(modalErrors.name ? { border: `1.5px solid ${COLORS.red}`, background: "rgba(239,68,68,0.05)" } : {}) }}
+                          value={formData.name || ""}
+                          onChange={e => { setFormData(d => ({ ...d, name: e.target.value })); if (modalErrors.name) setModalErrors(me => ({ ...me, name: "" })); }}
+                          placeholder="e.g. Sony A7 III Camera"
+                        />
+                        {modalErrors.name && <div style={{ color: COLORS.red, fontSize: "0.73rem", marginTop: "0.3rem", fontWeight: 600 }}>⚠ {modalErrors.name}</div>}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+                        <div>
+                          <label style={s.lbl}>Category</label>
+                          <select style={{ ...selectStyle, marginBottom: 0 }} value={formData.category || ""} onChange={e => setFormData(d => ({ ...d, category: e.target.value }))}>
+                            {categories.map(c => <option key={c.id} value={c.name}>{c.icon} {c.name}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={s.lbl}>Price / Day (₹) *</label>
+                          <input
+                            style={{ ...s.inp, marginBottom: 0, ...(modalErrors.priceDay ? { border: `1.5px solid ${COLORS.red}`, background: "rgba(239,68,68,0.05)" } : {}) }}
+                            type="number" min="1" placeholder="e.g. 1500"
+                            value={formData.priceDay || formData.price || ""}
+                            onChange={e => { setFormData(d => ({ ...d, priceDay: +e.target.value, price: +e.target.value })); if (modalErrors.priceDay) setModalErrors(me => ({ ...me, priceDay: "" })); }}
+                          />
+                          {modalErrors.priceDay && <div style={{ color: COLORS.red, fontSize: "0.73rem", marginTop: "0.3rem", fontWeight: 600 }}>⚠ {modalErrors.priceDay}</div>}
+                        </div>
+                      </div>
+                      <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "12px", padding: "0.9rem 1rem", marginBottom: "1rem" }}>
+                        <div style={{ fontSize: "0.73rem", fontWeight: 700, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.6rem" }}>💡 Optional — Long-term pricing (auto if blank)</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
+                          <div>
+                            <label style={s.lbl}>Stock *</label>
+                            <input
+                              style={{ ...s.inp, marginBottom: 0, ...(modalErrors.stock ? { border: `1.5px solid ${COLORS.red}`, background: "rgba(239,68,68,0.05)" } : {}) }}
+                              type="number" min="0" placeholder="e.g. 10"
+                              value={formData.stock ?? ""}
+                              onChange={e => { setFormData(d => ({ ...d, stock: +e.target.value })); if (modalErrors.stock) setModalErrors(me => ({ ...me, stock: "" })); }}
+                            />
+                            {modalErrors.stock && <div style={{ color: COLORS.red, fontSize: "0.7rem", marginTop: "0.2rem", fontWeight: 600 }}>⚠ {modalErrors.stock}</div>}
+                          </div>
+                          <div>
+                            <label style={s.lbl}>Per Month (₹)</label>
+                            <input style={{ ...s.inp, marginBottom: 0 }} type="number" placeholder={formData.priceDay ? `Auto: ₹${Math.round((formData.priceDay||0)*25).toLocaleString("en-IN")}` : "auto"} value={formData.priceMonth || ""} onChange={e => setFormData(d => ({ ...d, priceMonth: +e.target.value }))} />
+                          </div>
+                          <div>
+                            <label style={s.lbl}>Per Year (₹)</label>
+                            <input style={{ ...s.inp, marginBottom: 0 }} type="number" placeholder={formData.priceDay ? `Auto: ₹${Math.round((formData.priceDay||0)*280).toLocaleString("en-IN")}` : "auto"} value={formData.priceYear || ""} onChange={e => setFormData(d => ({ ...d, priceYear: +e.target.value }))} />
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: "1rem" }}>
+                        <label style={s.lbl}>Description</label>
+                        <textarea
+                          style={{ ...s.inp, height: "80px", resize: "vertical", marginBottom: 0 }}
+                          placeholder="Describe the product — condition, accessories, usage notes..."
+                          value={formData.description || ""}
+                          onChange={e => setFormData(d => ({ ...d, description: e.target.value }))}
+                        />
+                      </div>
+                      <button onClick={() => {
+                        const priceDay = formData.priceDay || formData.price || 0;
+                        const errs = {};
+                        if (!formData.name?.trim()) errs.name = "Product name is required";
+                        if (!priceDay || Number(priceDay) <= 0) errs.priceDay = "Price per day is required";
+                        if (formData.stock === "" || formData.stock === undefined || formData.stock === null) errs.stock = "Stock is required";
+                        if (Object.keys(errs).length) { setModalErrors(errs); return; }
+                        setModalErrors({});
+                        setStep(2);
+                      }} style={{ ...s.btn("primary"), width: "100%", padding: "0.8rem" }}>
+                        Continue → Photos
+                      </button>
+                    </>
+                  )}
+
+                  {/* ── Step 2: Photos ── */}
+                  {pStep === 2 && (
+                    <>
+                      <PhotoUp />
+                      <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
+                        <button onClick={() => setStep(1)} style={{ ...s.btn("secondary"), flex: 1 }}>← Back</button>
+                        <button onClick={() => setStep(3)} style={{ ...s.btn("primary"), flex: 2 }}>
+                          Continue {pPhotos.length > 0 ? `(${pPhotos.length} photo${pPhotos.length > 1 ? "s" : ""})` : "(skip)"} →
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── Step 3: Extras ── */}
+                  {pStep === 3 && (
+                    <>
+                      {/* Emoji picker */}
+                      <div style={{ marginBottom: "1.25rem" }}>
+                        <label style={s.lbl}>Emoji Icon {pPhotos.length > 0 ? "(fallback)" : ""}</label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                          {EMOJIS.map(e => (
+                            <button key={e} onClick={() => setFormData(d => ({ ...d, image: e }))}
+                              style={{ width: "40px", height: "40px", borderRadius: "9px", border: `2px solid ${formData.image === e ? COLORS.text : COLORS.border}`, background: formData.image === e ? COLORS.bg : "#fff", fontSize: "1.25rem", cursor: "pointer", transition: "all 0.15s" }}>{e}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Condition + Location */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+                        <div>
+                          <label style={s.lbl}>Condition</label>
+                          <select style={{ ...selectStyle, marginBottom: 0 }} value={formData.condition || "Excellent"} onChange={e => setFormData(d => ({ ...d, condition: e.target.value }))}>
+                            {["Like New","Excellent","Good","Fair"].map(c => <option key={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={s.lbl}>City / Location *</label>
+                          <input
+                            style={{ ...s.inp, marginBottom: 0, ...(modalErrors.location ? { border: `1.5px solid ${COLORS.red}`, background: "rgba(239,68,68,0.05)" } : {}) }}
+                            placeholder="e.g. Mumbai"
+                            value={formData.location || ""}
+                            onChange={e => { setFormData(d => ({ ...d, location: e.target.value })); if (modalErrors.location) setModalErrors(me => ({ ...me, location: "" })); }}
+                          />
+                          {modalErrors.location && <div style={{ color: COLORS.red, fontSize: "0.7rem", marginTop: "0.3rem", fontWeight: 600 }}>⚠ {modalErrors.location}</div>}
+                        </div>
+                      </div>
+
+                      {/* Status + Badge */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+                        <div>
+                          <label style={s.lbl}>Status</label>
+                          <select style={{ ...selectStyle, marginBottom: 0 }} value={formData.status || "active"} onChange={e => setFormData(d => ({ ...d, status: e.target.value }))}>
+                            <option value="active">Active</option>
+                            <option value="low_stock">Low Stock</option>
+                            <option value="out_of_stock">Out of Stock</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={s.lbl}>Badge</label>
+                          <select style={{ ...selectStyle, marginBottom: 0 }} value={formData.badge || "New"} onChange={e => setFormData(d => ({ ...d, badge: e.target.value }))}>
+                            <option value="New">New</option>
+                            <option value="Hot">Hot</option>
+                            <option value="Popular">Popular</option>
+                            <option value="Top Rated">Top Rated</option>
+                            <option value="">None</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Tags */}
+                      {featureFlags.tagging && tags.filter(t => t.active).length > 0 && (
+                        <div style={{ marginBottom: "1.25rem" }}>
+                          <label style={s.lbl}>Assign Tags</label>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                            {tags.filter(t => t.active).map(tag => {
+                              const selected = (formData.tags || []).includes(tag.id);
+                              const isBanner = tag.isBannerTag;
+                              const bannerCount = isBanner ? products.filter(p => p.id !== formData.id && (p.tags || []).includes(tag.id)).length : 0;
+                              const limitReached = isBanner && !selected && bannerCount >= (tag.maxProducts || 4);
+                              return (
+                                <div key={tag.id}
+                                  onClick={() => !limitReached && setFormData(d => ({ ...d, tags: selected ? (d.tags || []).filter(x => x !== tag.id) : [...(d.tags || []), tag.id] }))}
+                                  title={limitReached ? `Max ${tag.maxProducts || 4} for "${tag.name}"` : ""}
+                                  style={{ background: selected ? tag.bg : limitReached ? "#f3f4f6" : COLORS.bg, color: selected ? tag.color : limitReached ? "#9ca3af" : COLORS.muted, border: `2px solid ${selected ? tag.color : limitReached ? "#e5e7eb" : COLORS.border}`, borderRadius: "8px", padding: "0.3rem 0.7rem", cursor: limitReached ? "not-allowed" : "pointer", fontSize: "0.82rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.25rem", transition: "all 0.15s", opacity: limitReached ? 0.55 : 1 }}>
+                                  {tag.emoji} {tag.name}
+                                  {isBanner && <span style={{ background: selected ? tag.color : "#e5e7eb", color: selected ? "#fff" : "#6b7280", borderRadius: "10px", padding: "0 0.35rem", fontSize: "0.65rem", fontWeight: 800, marginLeft: "0.2rem" }}>{bannerCount + (selected ? 1 : 0)}/{tag.maxProducts || 4}</span>}
+                                  {selected && " ✓"}
+                                  {limitReached && " 🔒"}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {(formData.tags || []).some(tid => { const t = tags.find(x => x.id === tid); return t?.isBannerTag; }) && (
+                            <div style={{ marginTop: "0.5rem", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "8px", padding: "0.4rem 0.7rem", fontSize: "0.77rem", color: "#b45309", fontWeight: 600 }}>
+                              🌟 This product will appear in the Featured banner on the homepage
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Preview */}
+                      <div style={{ background: COLORS.bg, borderRadius: "14px", padding: "1rem", marginBottom: "1.25rem", border: `1px solid ${COLORS.border}` }}>
+                        <div style={{ fontSize: "0.72rem", fontWeight: 700, color: COLORS.muted, marginBottom: "0.6rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Preview</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.9rem" }}>
+                          <div style={{ width: "58px", height: "58px", borderRadius: "10px", overflow: "hidden", flexShrink: 0, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", border: `1px solid ${COLORS.border}` }}>
+                            {pPhotos.length > 0 ? <img src={pPhotos[0].url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (formData.image || "📦")}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{formData.name || "Product Name"}</div>
+                            <div style={{ color: COLORS.muted, fontSize: "0.78rem" }}>{formData.category} · {formData.condition || "Excellent"}{formData.location ? ` · ${formData.location}` : ""}</div>
+                            <div style={{ fontWeight: 800, fontSize: "0.95rem", marginTop: "0.15rem" }}>{formData.priceDay ? `₹${Number(formData.priceDay).toLocaleString("en-IN")}/day` : "₹0/day"}</div>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", alignItems: "flex-end" }}>
+                            {formData.badge && <span style={{ background: formData.badge === "Hot" ? "#fee2e2" : formData.badge === "Popular" ? "#fce7f3" : "#dcfce7", color: formData.badge === "Hot" ? "#991b1b" : formData.badge === "Popular" ? "#9d174d" : "#166534", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>{formData.badge}</span>}
+                            <span style={{ background: formData.status === "active" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", color: formData.status === "active" ? COLORS.green : COLORS.red, borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>{formData.status || "active"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "0.75rem" }}>
+                        <button onClick={() => setStep(2)} style={{ ...s.btn("secondary"), flex: 1 }}>← Back</button>
+                        <button style={{ ...s.btn("primary"), flex: 2 }} onClick={saveProduct}>{formData.id ? "Save Changes ✓" : "Add Product →"}</button>
+                      </div>
+                    </>
                   )}
                 </div>
-              )}
-              <div style={{ display: "flex", gap: "0.75rem" }}>
-                <button style={{ ...s.btn("secondary"), flex: 1 }} onClick={closeModal}>Cancel</button>
-                <button style={{ ...s.btn("primary"), flex: 2 }} onClick={saveProduct}>{formData.id ? "Save Changes ✓" : "Add Product →"}</button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Tag Modal */}
         {modal === "tag" && (
