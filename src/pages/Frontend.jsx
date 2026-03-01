@@ -4,6 +4,24 @@ import { fetchProducts, fetchTags, fetchFlags, fetchCustomFields, fetchPlans, fr
 const INR = (amount) => `₹${Number(amount).toLocaleString("en-IN")}`;
 const C = { dark: "#1a1a2e", gold: "#f59e0b", bg: "#f8f7f4", muted: "#6b7280", border: "#e5e7eb", red: "#ef4444", green: "#10b981", purple: "#7c3aed" };
 
+/* ─── Master User ─── */
+const MASTER_USER = {
+  email: "master@rentcircle.in",
+  password: "master@123",
+  profile: {
+    name: "Master Admin",
+    email: "master@rentcircle.in",
+    avatar: "M",
+    subscription: "master", // special flag
+    isMaster: true,
+    emailVerified: true,
+    phoneVerified: true,
+    plan: "Master",
+    city: "Ahmedabad",
+    phone: "+91 00000 00000",
+  },
+};
+
 const LOGO_SRC = "data:image/png;base64,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";
 
 const defaultProducts = [
@@ -163,6 +181,13 @@ function AuthModal({ onClose, onLogin, flags = {}, customFields = [] }) {
   // ── Sign In — real Supabase password login ────────────────
   const handleSignIn = async () => {
     if (!validate()) return;
+
+    // ── Master user bypass ────────────────────────────────
+    if (email === MASTER_USER.email && password === MASTER_USER.password) {
+      onLogin(MASTER_USER.profile);
+      return;
+    }
+
     setLoading(true); setErrors({});
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
@@ -1782,7 +1807,7 @@ export default function RentCircle() {
 
   const handleListProduct = () => {
     if (!user) { setAuthOpen(true); return; }
-    if (!user.subscription) { setSubGateOpen(true); return; }
+    if (!user.subscription && !user.isMaster) { setSubGateOpen(true); return; }
     setAddProductOpen(true);
   };
 
@@ -1812,6 +1837,7 @@ export default function RentCircle() {
 
   const addToCart = (product, days = 1) => {
     if (!user) { setAuthOpen(true); return; }
+    // Master user can order without a subscription plan
     setCart(prev => { const ex = prev.find(i => i.id === product.id); if (ex) return prev.map(i => i.id === product.id ? { ...i, days: i.days + days } : i); return [...prev, { ...product, days }]; });
     showNotif(`${product.name} added to cart!`);
     setSelectedProduct(null);
@@ -2096,7 +2122,7 @@ export default function RentCircle() {
               </div>
               {/* List Your Product CTA */}
               <button onClick={handleListProduct} style={{ background: `linear-gradient(135deg, ${C.purple}, #a855f7)`, color: "#fff", border: "none", borderRadius: "12px", padding: "0.75rem 1.5rem", cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif", display: "flex", alignItems: "center", gap: "0.6rem", boxShadow: "0 4px 15px rgba(124,58,237,0.4)", transition: "all 0.2s" }} onMouseEnter={e => e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e => e.currentTarget.style.transform=""}>
-                🏪 List Your Product {!user?.subscription && <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: "6px", padding: "0.1rem 0.5rem", fontSize: "0.72rem" }}>Needs Plan</span>}
+                🏪 List Your Product {(!user?.subscription && !user?.isMaster) && <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: "6px", padding: "0.1rem 0.5rem", fontSize: "0.72rem" }}>Needs Plan</span>}
               </button>
             </div>
 
@@ -2376,7 +2402,7 @@ export default function RentCircle() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }}>
             {user && (
               <button onClick={handleListProduct} className="rc-hide-sm" style={{ background: "rgba(124,58,237,0.08)", border: "1.5px solid rgba(124,58,237,0.3)", borderRadius: "10px", padding: "0.5rem 1rem", cursor: "pointer", fontWeight: 700, fontSize: "0.95rem", color: "#7c3aed", fontFamily: "'Outfit', sans-serif", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                🏪 {user.subscription ? "List Product" : "List 🔒"}
+                🏪 {(user.subscription || user.isMaster) ? "List Product" : "List 🔒"}
               </button>
             )}
             <button onClick={() => user ? setCartOpen(true) : setAuthOpen(true)} style={{ background: C.gold, border: "none", borderRadius: "10px", padding: "0.55rem 1.1rem", cursor: "pointer", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "1rem", color: C.dark, fontFamily: "'Outfit', sans-serif" }}>
@@ -2385,23 +2411,27 @@ export default function RentCircle() {
             {user ? (
               <div style={{ position: "relative" }}>
                 <div onClick={() => setUserMenuOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", background: C.bg, borderRadius: "10px", padding: "0.45rem 0.85rem", border: `1px solid ${C.border}` }}>
-                  <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: currentPlan ? currentPlan.accent : C.gold, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "0.95rem" }}>{user.avatar}</div>
-                  <span className="rc-hide-sm" style={{ fontSize: "0.82rem", color: currentPlan ? currentPlan.accent : C.dark, fontWeight: 700 }}>{currentPlan ? `⭐ ${currentPlan.name}` : user.name.split(" ")[0]}</span>
+                  <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: user.isMaster ? "#7c3aed" : currentPlan ? currentPlan.accent : C.gold, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "0.95rem" }}>{user.avatar}</div>
+                  <span className="rc-hide-sm" style={{ fontSize: "0.82rem", color: user.isMaster ? "#7c3aed" : currentPlan ? currentPlan.accent : C.dark, fontWeight: 700 }}>{user.isMaster ? "👑 Master" : currentPlan ? `⭐ ${currentPlan.name}` : user.name.split(" ")[0]}</span>
                 </div>
                 {userMenuOpen && (
                   <div style={{ position: "absolute", top: "52px", right: 0, background: "#fff", borderRadius: "16px", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", border: `1px solid ${C.border}`, padding: "0.75rem", minWidth: "230px", zIndex: 200 }}>
                     <div style={{ padding: "0.5rem 0.75rem", borderBottom: `1px solid ${C.border}`, marginBottom: "0.5rem" }}>
                       <div style={{ fontWeight: 700, fontSize: "0.95rem", color: C.dark }}>{user.name}</div>
                       <div style={{ color: C.muted, fontSize: "0.8rem" }}>{user.email}</div>
-                      {currentPlan ? <div style={{ marginTop: "0.3rem", background: currentPlan.color, color: currentPlan.accent, borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700, display: "inline-block" }}>⭐ {currentPlan.name} Plan</div>
-                        : <div style={{ marginTop: "0.3rem", background: "#faf5ff", color: "#7c3aed", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700, display: "inline-block", cursor: "pointer" }} onClick={() => { setUserMenuOpen(false); setSubGateOpen(true); }}>🔒 No Plan — Subscribe</div>}
+                      {user.isMaster
+                        ? <div style={{ marginTop: "0.3rem", background: "#f5f3ff", color: "#7c3aed", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700, display: "inline-block" }}>👑 Master User · Full Access</div>
+                        : currentPlan
+                          ? <div style={{ marginTop: "0.3rem", background: currentPlan.color, color: currentPlan.accent, borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700, display: "inline-block" }}>⭐ {currentPlan.name} Plan</div>
+                          : <div style={{ marginTop: "0.3rem", background: "#faf5ff", color: "#7c3aed", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700, display: "inline-block", cursor: "pointer" }} onClick={() => { setUserMenuOpen(false); setSubGateOpen(true); }}>🔒 No Plan — Subscribe</div>
+                      }
                     </div>
                     {[["My Rentals","home"],["My Listings","my-listings"],["Profile","profile"],["Settings","profile"]].map(([label, tab]) => (
                       <div key={label} onClick={() => navigate(tab)} style={{ padding: "0.6rem 0.75rem", borderRadius: "8px", cursor: "pointer", fontSize: "0.92rem", color: C.dark, display: "flex", alignItems: "center", gap: "0.5rem" }} onMouseEnter={e => e.currentTarget.style.background = C.bg} onMouseLeave={e => e.currentTarget.style.background = ""}>
                         {label === "My Listings" ? "🏪" : label === "My Rentals" ? "📦" : label === "Profile" ? "👤" : "⚙️"} {label}
                       </div>
                     ))}
-                    {!currentPlan && <div onClick={() => { setUserMenuOpen(false); setSubGateOpen(true); }} style={{ padding: "0.6rem 0.75rem", borderRadius: "8px", cursor: "pointer", fontSize: "0.92rem", background: "#faf5ff", color: "#7c3aed", fontWeight: 700, marginTop: "0.25rem" }}>⭐ Buy Subscription</div>}
+                    {!currentPlan && !user.isMaster && <div onClick={() => { setUserMenuOpen(false); setSubGateOpen(true); }} style={{ padding: "0.6rem 0.75rem", borderRadius: "8px", cursor: "pointer", fontSize: "0.92rem", background: "#faf5ff", color: "#7c3aed", fontWeight: 700, marginTop: "0.25rem" }}>⭐ Buy Subscription</div>}
                     <button onClick={handleLogout} style={{ width: "100%", marginTop: "0.5rem", padding: "0.6rem 0.75rem", border: "none", borderRadius: "8px", background: "rgba(239,68,68,0.08)", color: C.red, cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif", fontSize: "0.92rem", textAlign: "left" }}>Sign Out</button>
                   </div>
                 )}
@@ -2420,7 +2450,7 @@ export default function RentCircle() {
               {[["home","🏠 Home"],["products","📦 Products"],["plans","💎 Plans"],["how it works","❓ How It Works"],["about","🏢 About"],["contact","📬 Contact"]].map(([key,label]) => (
                 <div key={key} onClick={() => { navigate(key); setMobileMenuOpen(false); }} style={{ padding: "0.9rem 1rem", borderRadius: "10px", color: activeTab === key ? C.gold : "rgba(255,255,255,0.8)", fontWeight: activeTab === key ? 700 : 500, fontSize: "1rem", cursor: "pointer", background: activeTab === key ? "rgba(245,158,11,0.1)" : "transparent" }}>{label}</div>
               ))}
-              {user && <div onClick={() => { handleListProduct(); setMobileMenuOpen(false); }} style={{ padding: "0.9rem 1rem", borderRadius: "10px", color: "#c4b5fd", fontWeight: 600, fontSize: "1rem", cursor: "pointer" }}>🏪 {user.subscription ? "List Product" : "List Product 🔒"}</div>}
+              {user && <div onClick={() => { handleListProduct(); setMobileMenuOpen(false); }} style={{ padding: "0.9rem 1rem", borderRadius: "10px", color: "#c4b5fd", fontWeight: 600, fontSize: "1rem", cursor: "pointer" }}>🏪 {(user.subscription || user.isMaster) ? "List Product" : "List Product 🔒"}</div>}
             </div>
           </div>
         )}
