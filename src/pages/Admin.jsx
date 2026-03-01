@@ -330,10 +330,10 @@ export default function AdminPortal() {
     return result;
   };
 
-  const pendingProducts = useMemo(() => products.filter(p => p.status === "pending"), [products]);
+  const pendingProducts = useMemo(() => products.filter(p => p.badge === "Pending Review"), [products]);
 
   const filteredProducts = useMemo(() => sortAndFilter(
-    products.filter(p => p.status !== "pending"),
+    products.filter(p => p.badge !== "Pending Review"),
     pSearch, ["name", "category", "owner"], pSort, pDir, [
       [pCatFilter, (p, v) => p.category === v],
       [pStatusFilter, (p, v) => p.status === v],
@@ -360,7 +360,7 @@ export default function AdminPortal() {
 
   const approveProduct = async (product) => {
     try {
-      await updateProductDb(product.id, { ...product, status: "active" });
+      await updateProductDb(product.id, { ...product, status: "active", badge: "New" });
       showNotif(`"${product.name}" approved and is now live!`);
     } catch (e) { showNotif("Approve failed: " + e.message, "error"); }
   };
@@ -661,7 +661,7 @@ export default function AdminPortal() {
 
         {/* ── Approved Products Grid ── */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-          <div><h2 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Products</h2><p style={{ color: COLORS.muted, fontSize: "0.85rem" }}>{filteredProducts.length} of {products.filter(p => p.status !== "pending").length} products</p></div>
+          <div><h2 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Products</h2><p style={{ color: COLORS.muted, fontSize: "0.85rem" }}>{filteredProducts.length} of {products.filter(p => p.badge !== "Pending Review").length} products</p></div>
           <button style={s.btn("primary")} onClick={() => openModal("product", { price: 999, stock: 1, category: "Electronics", tags: [] })}>+ Add Product</button>
         </div>
         <div style={s.card}>
