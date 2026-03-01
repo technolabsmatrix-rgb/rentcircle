@@ -1884,13 +1884,16 @@ export default function RentCircle() {
   const [authOpen, setAuthOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [deliveryAddr, setDeliveryAddr] = useState({ name: "", phone: "", address: "", city: "", pincode: "" });
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [addrErrors, setAddrErrors] = useState({});
   const userMenuRef = useRef(null);
   useEffect(() => {
     if (!userMenuOpen) return;
     const handleClickOutside = (e) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
-        setUserMenuOpen(false);
-      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setUserMenuOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -2872,64 +2875,193 @@ export default function RentCircle() {
         })()}
 
         {/* CART */}
+        {/* ── CART SIDEBAR ── */}
         {cartOpen && (
           <div onClick={() => setCartOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 140 }}>
-            <div onClick={e => e.stopPropagation()} style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: "380px", background: "#fff", boxShadow: "-10px 0 40px rgba(0,0,0,0.1)", padding: "2rem", display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-                <h3 style={{ fontWeight: 800, fontSize: "1.3rem" }}>Your Cart ({cart.length})</h3>
-                <button onClick={() => setCartOpen(false)} style={{ border: "none", background: "#f3f4f6", borderRadius: "50%", width: "36px", height: "36px", cursor: "pointer" }}>✕</button>
+            <div onClick={e => e.stopPropagation()} style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: "400px", background: "#fff", boxShadow: "-10px 0 40px rgba(0,0,0,0.1)", padding: "2rem", display: "flex", flexDirection: "column", fontFamily: "'Outfit', sans-serif" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h3 style={{ fontWeight: 800, fontSize: "1.3rem" }}>🛒 Your Cart ({cart.length})</h3>
+                <button onClick={() => setCartOpen(false)} style={{ border: "none", background: "#f3f4f6", borderRadius: "50%", width: "36px", height: "36px", cursor: "pointer", fontSize: "1rem" }}>✕</button>
               </div>
-              {cart.length === 0 ? <div style={{ textAlign: "center", padding: "3rem 0", color: "#9ca3af" }}><div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🛒</div>Your cart is empty</div> : (
+              {cart.length === 0
+                ? <div style={{ textAlign: "center", padding: "3rem 0", color: "#9ca3af" }}><div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🛒</div>Your cart is empty</div>
+                : (
                 <>
-                  <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  {/* Cart items */}
+                  <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem" }}>
                     {cart.map(item => (
-                      <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "1rem", background: C.bg, borderRadius: "12px", padding: "1rem" }}>
-                        <div style={{ fontSize: "2rem" }}>{item.image}</div>
-                        <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{item.name}</div><div style={{ color: "#9ca3af", fontSize: "0.8rem" }}>{item.days}d · {INR(item.price * item.days)}</div></div>
-                        <button onClick={() => setCart(p => p.filter(i => i.id !== item.id))} style={{ border: "none", background: "none", cursor: "pointer", color: C.red }}>✕</button>
+                      <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "0.85rem", background: C.bg, borderRadius: "12px", padding: "0.85rem" }}>
+                        <div style={{ fontSize: "1.8rem", flexShrink: 0 }}>{item.photos?.length > 0 ? <img src={item.photos[0].url} alt={item.name} style={{ width: "40px", height: "40px", borderRadius: "8px", objectFit: "cover" }} /> : item.image}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.88rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+                          <div style={{ color: C.muted, fontSize: "0.78rem" }}>{item.days}d · {INR((item.priceDay || item.price || 0) * item.days)}</div>
+                        </div>
+                        <button onClick={() => setCart(p => p.filter(i => i.id !== item.id))} style={{ border: "none", background: "none", cursor: "pointer", color: C.red, fontSize: "1rem", flexShrink: 0 }}>✕</button>
                       </div>
                     ))}
                   </div>
-                  <div style={{ paddingTop: "1.5rem", borderTop: "2px solid #f3f4f6", marginTop: "1rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: "1.2rem", marginBottom: "1rem" }}><span>Total</span><span>{INR(cartTotal)}</span></div>
+
+                  {/* Total + proceed button */}
+                  <div style={{ borderTop: `2px solid ${C.border}`, paddingTop: "1.25rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: "1.15rem", marginBottom: "1rem" }}><span>Total</span><span style={{ color: C.dark }}>{INR(cartTotal)}</span></div>
                     <button
-                      onClick={async () => {
-                        if (!user) { setCartOpen(false); setAuthOpen(true); return; }
-                        try {
-                          const today = new Date();
-                          const fmt = (d) => d.toISOString().split("T")[0];
-                          await Promise.all(cart.map(item => {
-                            const days = item.days || 1;
-                            const startDate = fmt(today);
-                            const end = new Date(today); end.setDate(end.getDate() + days);
-                            const endDate = fmt(end);
-                            const unitPrice = item.priceDay || item.price || 0;
-                            return insertOrder({
-                              product_id:  item.id,
-                              product:     item.name,
-                              user_id:     user.supabaseId || null,
-                              user_name:   user.name,
-                              user_email:  user.email,
-                              days,
-                              start_date:  startDate,
-                              end_date:    endDate,
-                              amount:      unitPrice * days,
-                              status:      "active",
-                            });
-                          }));
-                          setCart([]);
-                          setCartOpen(false);
-                          showNotif("Order placed! 🎉 Check Admin → Orders.");
-                        } catch (err) {
-                          showNotif("Failed to place order: " + (err.message || "Unknown error"), "error");
-                        }
-                      }}
-                      style={{ width: "100%", background: C.gold, border: "none", borderRadius: "12px", padding: "1rem", cursor: "pointer", fontWeight: 800, fontSize: "1rem", fontFamily: "'Outfit', sans-serif", color: C.dark }}>
-                      Pay via UPI / Card →
+                      onClick={() => { setCheckoutOpen(true); setCartOpen(false); setTermsAccepted(false); setAddrErrors({}); }}
+                      style={{ width: "100%", background: C.dark, border: "none", borderRadius: "12px", padding: "1rem", cursor: "pointer", fontWeight: 800, fontSize: "1rem", fontFamily: "'Outfit', sans-serif", color: "#fff" }}>
+                      Proceed to Checkout →
                     </button>
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── CHECKOUT MODAL ── */}
+        {checkoutOpen && (
+          <div onClick={() => setCheckoutOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 145, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "24px", width: "100%", maxWidth: "520px", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 30px 80px rgba(0,0,0,0.25)", fontFamily: "'Outfit', sans-serif" }}>
+              {/* Header */}
+              <div style={{ padding: "1.5rem 1.75rem", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "#fff", borderRadius: "24px 24px 0 0", zIndex: 1 }}>
+                <div>
+                  <h2 style={{ fontWeight: 900, fontSize: "1.3rem", margin: 0, color: C.dark }}>📦 Confirm Order</h2>
+                  <p style={{ margin: 0, color: C.muted, fontSize: "0.82rem", marginTop: "0.2rem" }}>{cart.length} item{cart.length !== 1 ? "s" : ""} · {INR(cartTotal)}</p>
+                </div>
+                <button onClick={() => setCheckoutOpen(false)} style={{ border: "none", background: "#f3f4f6", borderRadius: "50%", width: "36px", height: "36px", cursor: "pointer", fontSize: "1rem" }}>✕</button>
+              </div>
+
+              <div style={{ padding: "1.5rem 1.75rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                {/* Order summary */}
+                <div style={{ background: C.bg, borderRadius: "16px", padding: "1rem" }}>
+                  <div style={{ fontWeight: 700, fontSize: "0.82rem", color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.75rem" }}>Order Summary</div>
+                  {cart.map(item => (
+                    <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.4rem 0", borderBottom: `1px solid ${C.border}` }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: "0.88rem" }}>{item.name}</div>
+                        <div style={{ color: C.muted, fontSize: "0.75rem" }}>{item.days} day{item.days !== 1 ? "s" : ""}</div>
+                      </div>
+                      <div style={{ fontWeight: 700, color: C.dark }}>{INR((item.priceDay || item.price || 0) * item.days)}</div>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: "1rem", marginTop: "0.75rem", color: C.dark }}>
+                    <span>Total</span><span>{INR(cartTotal)}</span>
+                  </div>
+                </div>
+
+                {/* Payment method */}
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: "0.6rem", color: C.dark }}>💳 Payment Method</div>
+                  <div style={{ background: "#f0fdf4", border: "2px solid #10b981", borderRadius: "12px", padding: "0.9rem 1.1rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <span style={{ fontSize: "1.5rem" }}>💵</span>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "#065f46" }}>Cash on Delivery</div>
+                      <div style={{ fontSize: "0.78rem", color: "#059669" }}>Pay when your order is delivered</div>
+                    </div>
+                    <div style={{ marginLeft: "auto", width: "20px", height: "20px", borderRadius: "50%", background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ color: "#fff", fontSize: "0.7rem", fontWeight: 900 }}>✓</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Delivery address */}
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: "0.75rem", color: C.dark }}>🏠 Delivery Address</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+                    {[
+                      { key: "name",    label: "Full Name",       placeholder: "Enter your full name",        type: "text" },
+                      { key: "phone",   label: "Phone Number",    placeholder: "+91 XXXXX XXXXX",             type: "tel"  },
+                      { key: "address", label: "Street Address",  placeholder: "House no., Street, Area",     type: "text" },
+                      { key: "city",    label: "City",            placeholder: "City",                        type: "text" },
+                      { key: "pincode", label: "PIN Code",        placeholder: "6-digit PIN code",            type: "text" },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: C.muted, marginBottom: "0.3rem" }}>{f.label}{" "}<span style={{ color: C.red }}>*</span></label>
+                        <input
+                          type={f.type}
+                          placeholder={f.placeholder}
+                          value={deliveryAddr[f.key]}
+                          onChange={e => { setDeliveryAddr(p => ({ ...p, [f.key]: e.target.value })); setAddrErrors(p => ({ ...p, [f.key]: "" })); }}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "0.7rem 0.9rem", borderRadius: "10px", border: `1.5px solid ${addrErrors[f.key] ? C.red : C.border}`, outline: "none", fontFamily: "'Outfit', sans-serif", fontSize: "0.9rem", color: C.dark, background: addrErrors[f.key] ? "#fff5f5" : "#fff", transition: "border 0.15s" }}
+                          onFocus={e => e.target.style.borderColor = C.dark}
+                          onBlur={e => e.target.style.borderColor = addrErrors[f.key] ? C.red : C.border}
+                        />
+                        {addrErrors[f.key] && <div style={{ color: C.red, fontSize: "0.75rem", marginTop: "0.2rem" }}>{addrErrors[f.key]}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Terms & conditions */}
+                <div style={{ background: "#fafafa", border: `1.5px solid ${termsAccepted ? C.green : C.border}`, borderRadius: "12px", padding: "1rem 1.1rem", transition: "border 0.15s" }}>
+                  <label style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={e => setTermsAccepted(e.target.checked)}
+                      style={{ width: "18px", height: "18px", marginTop: "1px", accentColor: C.green, cursor: "pointer", flexShrink: 0 }}
+                    />
+                    <span style={{ fontSize: "0.82rem", color: C.dark, lineHeight: 1.55 }}>
+                      I agree to the{" "}
+                      <span onClick={() => { setCheckoutOpen(false); navigate("terms"); }} style={{ color: "#7c3aed", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>Terms & Conditions</span>
+                      {" "}and{" "}
+                      <span onClick={() => { setCheckoutOpen(false); navigate("refund"); }} style={{ color: "#7c3aed", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>Refund Policy</span>.
+                      I understand this is a Cash on Delivery order and I must pay on delivery.
+                    </span>
+                  </label>
+                </div>
+
+                {/* Place order button */}
+                <button
+                  disabled={checkoutLoading}
+                  onClick={async () => {
+                    // Validate address
+                    const errs = {};
+                    if (!deliveryAddr.name.trim())    errs.name    = "Full name is required";
+                    if (!deliveryAddr.phone.trim())   errs.phone   = "Phone number is required";
+                    if (!deliveryAddr.address.trim()) errs.address = "Street address is required";
+                    if (!deliveryAddr.city.trim())    errs.city    = "City is required";
+                    if (!/^\d{6}$/.test(deliveryAddr.pincode.trim())) errs.pincode = "Enter a valid 6-digit PIN code";
+                    if (Object.keys(errs).length) { setAddrErrors(errs); return; }
+                    if (!termsAccepted) { showNotif("Please accept the Terms & Conditions to proceed.", "error"); return; }
+
+                    setCheckoutLoading(true);
+                    try {
+                      const today = new Date();
+                      const fmt = d => d.toISOString().split("T")[0];
+                      const fullAddr = `${deliveryAddr.address}, ${deliveryAddr.city} - ${deliveryAddr.pincode}`;
+                      await Promise.all(cart.map(item => {
+                        const days = item.days || 1;
+                        const end = new Date(today); end.setDate(end.getDate() + days);
+                        return insertOrder({
+                          product_id:       item.id,
+                          product:          item.name,
+                          user_id:          user?.supabaseId || null,
+                          user_name:        deliveryAddr.name || user?.name,
+                          user_email:       user?.email,
+                          days,
+                          start_date:       fmt(today),
+                          end_date:         fmt(end),
+                          amount:           (item.priceDay || item.price || 0) * days,
+                          status:           "active",
+                          delivery_address: fullAddr,
+                          delivery_phone:   deliveryAddr.phone,
+                          payment_method:   "cod",
+                        });
+                      }));
+                      setCart([]);
+                      setCheckoutOpen(false);
+                      setDeliveryAddr({ name: "", phone: "", address: "", city: "", pincode: "" });
+                      setTermsAccepted(false);
+                      showNotif("🎉 Order placed! Pay cash on delivery.");
+                    } catch (err) {
+                      showNotif("Failed to place order: " + (err.message || "Unknown error"), "error");
+                    } finally {
+                      setCheckoutLoading(false);
+                    }
+                  }}
+                  style={{ width: "100%", background: checkoutLoading ? "#9ca3af" : C.green, border: "none", borderRadius: "14px", padding: "1.1rem", cursor: checkoutLoading ? "not-allowed" : "pointer", fontWeight: 900, fontSize: "1.05rem", fontFamily: "'Outfit', sans-serif", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", transition: "background 0.2s" }}>
+                  {checkoutLoading ? "⏳ Placing Order..." : "✅ Confirm Order — Cash on Delivery"}
+                </button>
+              </div>
             </div>
           </div>
         )}
