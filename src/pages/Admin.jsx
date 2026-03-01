@@ -291,7 +291,7 @@ export default function AdminPortal() {
   });
   const [activeSection, setActiveSection] = useState("dashboard");
   const { categories, save: saveCategory, remove: removeCategory } = useCategories(initialCategories);
-  const { products, setProducts, add: addProduct, update: updateProductDb, remove: removeProduct } = useProducts(initialProducts);
+  const { products, setProducts, add: addProduct, update: updateProductDb, remove: removeProduct, refresh: refreshProducts } = useProducts(initialProducts);
   const { plans, save: savePlanDb } = usePlans(initialPlans);
   const { users, save: saveUserDb } = useProfiles(initialUsers);
   const { tags, setTags, save: saveTagDb, remove: removeTagDb } = useTags(initialTags);
@@ -1148,7 +1148,7 @@ export default function AdminPortal() {
           </div>
           <nav style={{ padding: "0.75rem 0", flex: 1, overflowY: "auto" }}>
             {navItems.map(item => (
-              <div key={item.id} style={s.navItem(activeSection === item.id)} onClick={() => setActiveSection(item.id)}>
+              <div key={item.id} style={s.navItem(activeSection === item.id)} onClick={() => { setActiveSection(item.id); refreshProducts(); }}>
                 <span style={{ fontSize: "1.05rem", flexShrink: 0 }}>{item.icon}</span>
                 {sidebarOpen && <span>{item.label}</span>}
                 {sidebarOpen && item.id === "tags" && featureFlags.tagging && <span style={{ marginLeft: "auto", background: COLORS.accentLight, color: COLORS.accent, borderRadius: "4px", padding: "0.1rem 0.4rem", fontSize: "0.65rem", fontWeight: 700 }}>{tags.filter(t => t.active).length}</span>}

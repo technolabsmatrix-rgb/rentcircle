@@ -165,6 +165,7 @@ function toDbProduct(p) {
     price_year:  p.priceYear,
     stock:       p.stock,
     status:      p.status    || 'active',
+    badge:       p.badge     || 'Pending Review',   // ← ADDED
     description: p.description,
     image:       p.image     || '📦',
     condition:   p.condition,
@@ -178,7 +179,6 @@ function toDbProduct(p) {
     photos:      p.photos    || [],
   }
 }
-
 export function fromDbProduct(p) {
   return {
     id:          p.id,
@@ -190,6 +190,7 @@ export function fromDbProduct(p) {
     priceYear:   p.price_year,
     stock:       p.stock,
     status:      p.status,
+    badge:       p.badge,                           // ← ADDED
     description: p.description,
     image:       p.image,
     condition:   p.condition,
@@ -205,7 +206,6 @@ export function fromDbProduct(p) {
     createdAt:   p.created_at,
   }
 }
-
 // ─── Realtime subscriptions ───────────────────────────────
 // Call once on app start — callback fires whenever a table changes
 export function subscribeTo(table, callback) {
