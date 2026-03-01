@@ -10,35 +10,6 @@ const fetchCategories = () =>
 const INR = (amount) => `₹${Number(amount).toLocaleString("en-IN")}`;
 const C = { dark: "#1a1a2e", gold: "#f59e0b", bg: "#f8f7f4", muted: "#6b7280", border: "#e5e7eb", red: "#ef4444", green: "#10b981", purple: "#7c3aed" };
 
-/* ─── Product Cache ───────────────────────────────────────
- *  Persists DB products in localStorage so on page refresh
- *  users immediately see real data (no defaultProducts flash).
- *  TTL: 5 minutes — after which a background re-fetch updates it.
- * ─────────────────────────────────────────────────────── */
-const RC_CACHE_KEY = "rc_products_v1";
-const RC_CACHE_TTL = 5 * 60 * 1000; // 5 min
-
-function readCache() {
-  try {
-    const raw = localStorage.getItem(RC_CACHE_KEY);
-    if (!raw) return null;
-    const { ts, data } = JSON.parse(raw);
-    if (!Array.isArray(data) || !data.length) return null;
-    // Return cached data regardless of TTL — TTL only controls background refresh
-    return { data, stale: Date.now() - ts > RC_CACHE_TTL };
-  } catch { return null; }
-}
-
-function writeCache(products) {
-  try {
-    localStorage.setItem(RC_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: products }));
-  } catch { /* quota exceeded — skip silently */ }
-}
-
-function invalidateCache() {
-  try { localStorage.removeItem(RC_CACHE_KEY); } catch { }
-}
-
 /* ─── Master User ─── */
 const MASTER_USER = {
   email: "master@rentcircle.in",
@@ -1764,7 +1735,7 @@ function ProfilePage({ user, onUpdate, onUpgrade, currentPlan, navigate }) {
 export default function RentCircle() {
   const [activeTab, setActiveTab] = useState("home");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [allProducts, setAllProducts] = useState(() => readCache()?.data || defaultProducts);
+  const [allProducts, setAllProducts] = useState(defaultProducts);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -1795,13 +1766,9 @@ export default function RentCircle() {
 
   useEffect(() => {
     // ── Initial load ──────────────────────────────────────
-    // Load products: serve from cache immediately, fetch DB in background
-    const cached = readCache();
-    if (!cached || cached.stale) {
-      fetchProducts()
-        .then(rows => { setAllProducts(rows); writeCache(rows); })
-        .catch(() => {})
-    }
+    fetchProducts()
+      .then(rows => setAllProducts(rows.map(fromDbProduct)))
+      .catch(() => {})
     fetchTags()
       .then(rows => setAdminTags(rows.filter(t => t.active)))
       .catch(() => {})
@@ -1873,7 +1840,7 @@ export default function RentCircle() {
       ),
       subscribeTo('products', () =>
         fetchProducts()
-          .then(rows => { setAllProducts(rows); writeCache(rows); })
+          .then(rows => setAllProducts(rows.map(fromDbProduct)))
           .catch(() => {})
       ),
       subscribeTo('tags', () =>
@@ -1964,21 +1931,13 @@ export default function RentCircle() {
       if (editingProduct) {
         // Update existing product in DB
         await updateProductInDb(editingProduct.id, dbData);
-        setAllProducts(prev => {
-          const next = prev.map(p => p.id === editingProduct.id ? { ...p, ...product } : p);
-          writeCache(next);
-          return next;
-        });
+        setAllProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...product } : p));
         showNotif("Product updated successfully! ✓");
       } else {
         // Insert new product into DB
         const inserted = await insertProduct(dbData);
         const newProduct = inserted ? fromDbProduct(inserted) : { ...product, id: Date.now() };
-        setAllProducts(prev => {
-          const next = [...prev, newProduct];
-          writeCache(next);
-          return next;
-        });
+        setAllProducts(prev => [...prev, newProduct]);
         if (product.badge === "Pending Review") {
           showNotif("Product submitted for review! ⏳ Admin will approve it shortly.");
         } else {
@@ -2000,11 +1959,7 @@ export default function RentCircle() {
     } catch (e) {
       console.error("Delete product error:", e);
     }
-    setAllProducts(prev => {
-      const next = prev.filter(p => p.id !== id);
-      writeCache(next);
-      return next;
-    });
+    setAllProducts(prev => prev.filter(p => p.id !== id));
     showNotif("Listing removed", "info");
   };
 
@@ -2259,11 +2214,11 @@ export default function RentCircle() {
                   </button>
                 </div>
                 {/* Cards grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.25rem" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "1.25rem", justifyContent: "center" }}>
                   {featuredProducts.map((p, idx) => (
                     <div key={p.id}
                       onClick={() => { setSelectedProduct(p); setRentPeriod("day"); setRentDays(1); setRentStartDate(""); setRentEndDate(""); }}
-                      style={{ background: "rgba(255,255,255,0.06)", borderRadius: "20px", border: "1.5px solid rgba(255,255,255,0.1)", padding: "1.5rem", cursor: "pointer", transition: "all 0.25s", backdropFilter: "blur(8px)", position: "relative", overflow: "hidden" }}
+                      style={{ background: "rgba(255,255,255,0.06)", borderRadius: "20px", border: "1.5px solid rgba(255,255,255,0.1)", padding: "1.5rem", cursor: "pointer", transition: "all 0.25s", backdropFilter: "blur(8px)", position: "relative", overflow: "hidden", width: "280px", flexShrink: 0 }}
                       onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.11)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.5)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = ""; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}>
                       {/* Rank badge */}
