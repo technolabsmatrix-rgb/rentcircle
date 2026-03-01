@@ -10,6 +10,31 @@ const fetchCategories = () =>
 const INR = (amount) => `₹${Number(amount).toLocaleString("en-IN")}`;
 const C = { dark: "#1a1a2e", gold: "#f59e0b", bg: "#f8f7f4", muted: "#6b7280", border: "#e5e7eb", red: "#ef4444", green: "#10b981", purple: "#7c3aed" };
 
+/* ─── Product Cache (localStorage) ──────────────────────────
+ *  On refresh, serve cached DB products instantly so users
+ *  never see the default placeholder products flash.
+ *  TTL 5 min: stale cache still shows immediately, DB fetch
+ *  runs in background and updates the view when it resolves.
+ * ────────────────────────────────────────────────────────── */
+const RC_CACHE_KEY = "rc_products_v1";
+const RC_CACHE_TTL = 5 * 60 * 1000;
+
+function readCache() {
+  try {
+    const raw = localStorage.getItem(RC_CACHE_KEY);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (!Array.isArray(data) || !data.length) return null;
+    return { data, stale: Date.now() - ts > RC_CACHE_TTL };
+  } catch { return null; }
+}
+function writeCache(products) {
+  try { localStorage.setItem(RC_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: products })); } catch { }
+}
+function invalidateCache() {
+  try { localStorage.removeItem(RC_CACHE_KEY); } catch { }
+}
+
 /* ─── Master User ─── */
 const MASTER_USER = {
   email: "master@rentcircle.in",
@@ -536,6 +561,7 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
   const [focused, setFocused] = useState(null);
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
+  const [editConfirmed, setEditConfirmed] = useState(false);
 
   const inp = (id) => ({
     width: "100%", borderRadius: "12px", padding: "0.8rem 1rem", outline: "none",
@@ -567,6 +593,7 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
   const handleSave = () => {
     if (!validate()) { setStep(1); return; }
     const isEdit = !!editProduct;
+    if (isEdit && !editConfirmed) return;
     onSave({
       ...form,
       photos,
@@ -577,13 +604,10 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
       id: editProduct?.id || Date.now(),
       rating: editProduct?.rating || 5.0,
       reviews: editProduct?.reviews || 0,
-      badge: editProduct?.badge || "New",
       unit: "day",
       owner: user.name,
       ownerEmail: user.email,
-      // New products: save as active but mark badge as "Pending Review" for admin approval workflow
-      // This avoids the DB check constraint while keeping the approval flow intact
-      status: isEdit ? (editProduct.status || "active") : "active",
+      status: isEdit ? (editProduct.status || "active") : "pending",
       badge: isEdit ? (editProduct.badge || "New") : "Pending Review",
     });
   };
@@ -735,9 +759,27 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
                   </div>
                 </div>
               </div>
+              {editProduct && (
+                <div style={{ background: "#fffbeb", border: "2px solid #f59e0b", borderRadius: "14px", padding: "1rem 1.25rem", marginBottom: "1rem" }}>
+                  <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+                    <span style={{ fontSize: "1.4rem", flexShrink: 0, lineHeight: 1 }}>⚠️</span>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: "0.92rem", color: "#92400e", marginBottom: "0.35rem" }}>Your listing will be taken down for re-approval</div>
+                      <div style={{ fontSize: "0.82rem", color: "#78350f", lineHeight: 1.55 }}>
+                        Saving changes will send this listing back to admin for review. <strong>It will be hidden from the marketplace</strong> until an admin approves it again.
+                      </div>
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginTop: "0.85rem", cursor: "pointer" }}>
+                        <input type="checkbox" checked={editConfirmed} onChange={e => setEditConfirmed(e.target.checked)}
+                          style={{ width: "16px", height: "16px", accentColor: "#f59e0b", cursor: "pointer", flexShrink: 0 }} />
+                        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#92400e" }}>I understand my listing will be unpublished until re-approved</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div style={{ display: "flex", gap: "0.75rem" }}>
                 <button onClick={() => setStep(2)} style={{ flex: 1, padding: "0.9rem", border: `2px solid ${C.border}`, borderRadius: "12px", background: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif", color: C.dark }}>← Back</button>
-                <button onClick={handleSave} style={{ flex: 2, padding: "0.9rem", border: "none", borderRadius: "12px", background: C.green, color: "#fff", cursor: "pointer", fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                <button onClick={handleSave} style={{ flex: 2, padding: "0.9rem", border: "none", borderRadius: "12px", background: editProduct && !editConfirmed ? "#9ca3af" : C.green, color: "#fff", cursor: editProduct && !editConfirmed ? "not-allowed" : "pointer", fontWeight: 800, fontFamily: "'Outfit', sans-serif", transition: "background 0.2s" }}>
                   {editProduct ? "Save Changes ✓" : "Publish Listing 🚀"}
                 </button>
               </div>
@@ -1735,7 +1777,7 @@ function ProfilePage({ user, onUpdate, onUpgrade, currentPlan, navigate }) {
 export default function RentCircle() {
   const [activeTab, setActiveTab] = useState("home");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [allProducts, setAllProducts] = useState(defaultProducts);
+  const [allProducts, setAllProducts] = useState(() => readCache()?.data || defaultProducts);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -1766,9 +1808,13 @@ export default function RentCircle() {
 
   useEffect(() => {
     // ── Initial load ──────────────────────────────────────
-    fetchProducts()
-      .then(rows => setAllProducts(rows.map(fromDbProduct)))
-      .catch(() => {})
+    // Stale-while-revalidate: serve cache immediately, re-fetch if stale
+    const _cached = readCache();
+    if (!_cached || _cached.stale) {
+      fetchProducts()
+        .then(rows => { setAllProducts(rows); writeCache(rows); })
+        .catch(() => {})
+    }
     fetchTags()
       .then(rows => setAdminTags(rows.filter(t => t.active)))
       .catch(() => {})
@@ -1840,7 +1886,7 @@ export default function RentCircle() {
       ),
       subscribeTo('products', () =>
         fetchProducts()
-          .then(rows => setAllProducts(rows.map(fromDbProduct)))
+          .then(rows => { setAllProducts(rows); writeCache(rows); })
           .catch(() => {})
       ),
       subscribeTo('tags', () =>
@@ -1921,28 +1967,31 @@ export default function RentCircle() {
         rentals: product.rentals ?? 0,
         rating: product.rating ?? 5.0,
         reviews: product.reviews ?? 0,
-        badge: product.badge || "New",
         owner: product.owner,
         ownerEmail: product.ownerEmail,
-        status: "active",
-        badge: product.badge || "Pending Review",
+        status: "pending",
+        badge: "Pending Review",
       };
 
       if (editingProduct) {
         // Update existing product in DB
         await updateProductInDb(editingProduct.id, dbData);
-        setAllProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...product } : p));
+        setAllProducts(prev => {
+          const next = prev.map(p => p.id === editingProduct.id ? { ...p, ...product } : p);
+          writeCache(next);
+          return next;
+        });
         showNotif("Product updated successfully! ✓");
       } else {
         // Insert new product into DB
         const inserted = await insertProduct(dbData);
         const newProduct = inserted ? fromDbProduct(inserted) : { ...product, id: Date.now() };
-        setAllProducts(prev => [...prev, newProduct]);
-        if (product.badge === "Pending Review") {
-          showNotif("Product submitted for review! ⏳ Admin will approve it shortly.");
-        } else {
-          showNotif("Product listed successfully! 🚀");
-        }
+        setAllProducts(prev => {
+          const next = [...prev, newProduct];
+          writeCache(next);
+          return next;
+        });
+        showNotif("Product submitted for review! ⏳ Admin will approve it shortly.");
       }
     } catch (e) {
       console.error("Save product error:", e);
@@ -1959,7 +2008,11 @@ export default function RentCircle() {
     } catch (e) {
       console.error("Delete product error:", e);
     }
-    setAllProducts(prev => prev.filter(p => p.id !== id));
+    setAllProducts(prev => {
+      const next = prev.filter(p => p.id !== id);
+      writeCache(next);
+      return next;
+    });
     showNotif("Listing removed", "info");
   };
 
@@ -2185,11 +2238,12 @@ export default function RentCircle() {
         {/* ── FEATURED BANNER ── */}
         {activeTab === "home" && (() => {
           const featTag = adminTags.find(t => t.isBannerTag && t.active);
-          const featuredProducts = featTag
-            ? allProducts.filter(p => (p.tags || []).includes(featTag.id)).slice(0, featTag.maxProducts || 4)
-            : allProducts.slice(0, 4);
+          if (!featTag) return null;
+          const featuredProducts = allProducts.filter(p =>
+            (p.tags || []).map(Number).includes(Number(featTag.id))
+          ).slice(0, featTag.maxProducts || 4);
           if (!featuredProducts.length) return null;
-          const tag = featTag || { name: "Featured", emoji: "🌟", color: "#b45309", bg: "rgba(245,158,11,0.18)" };
+          const tag = featTag;
           return (
             <div style={{ background: `linear-gradient(135deg, #1a0a3e 0%, #0f172a 60%, #1a1a2e 100%)`, padding: "4rem 2rem", position: "relative", overflow: "hidden" }}>
               {/* Background glows */}
@@ -2223,8 +2277,10 @@ export default function RentCircle() {
                       onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = ""; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}>
                       {/* Rank badge */}
                       <div style={{ position: "absolute", top: "1rem", right: "1rem", width: "28px", height: "28px", background: idx === 0 ? C.gold : "rgba(255,255,255,0.12)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, color: idx === 0 ? C.dark : "rgba(255,255,255,0.6)" }}>#{idx + 1}</div>
-                      {/* Emoji icon */}
-                      <div style={{ width: "60px", height: "60px", background: "rgba(255,255,255,0.08)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", marginBottom: "1rem", border: "1px solid rgba(255,255,255,0.1)" }}>{p.image}</div>
+                      {/* Photo or emoji icon */}
+                      <div style={{ width: "60px", height: "60px", background: "rgba(255,255,255,0.08)", borderRadius: "16px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem", marginBottom: "1rem", border: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }}>
+                        {p.photos?.length > 0 ? <img src={p.photos[0].url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : p.image}
+                      </div>
                       {/* Name & category */}
                       <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.3rem" }}>{p.category}</div>
                       <div style={{ color: "#fff", fontWeight: 800, fontSize: "1rem", marginBottom: "0.4rem", lineHeight: 1.3, paddingRight: "2rem" }}>{p.name}</div>
