@@ -181,12 +181,13 @@ function dbPlanToFrontend(dbPlan) {
   const key = dbPlan.name?.toLowerCase();
   const ui  = PLAN_UI[key] || { color: "#f8f7f4", accent: "#f59e0b", listingLimit: 10, popular: false };
   return {
-    id:           key,
-    name:         dbPlan.name,
-    price:        dbPlan.price,
-    features:     Array.isArray(dbPlan.features) ? dbPlan.features : [],
-    active:       dbPlan.active,
-    subscribers:  dbPlan.subscribers,
+    id:             key,
+    name:           dbPlan.name,
+    price:          dbPlan.price,
+    features:       Array.isArray(dbPlan.features) ? dbPlan.features : [],
+    active:         dbPlan.active,
+    subscribers:    dbPlan.subscribers,
+    productExpiry:  dbPlan.productExpiry || null,
     ...ui,
   };
 }
@@ -906,11 +907,12 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
 }
 
 /* ─── My Listings Page ─── */
-function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDeleteProduct, onUpgrade, navigate }) {
+function MyListingsPage({ user, allProducts, plans: livePlans, onAddProduct, onEditProduct, onDeleteProduct, onUpgrade, navigate }) {
   const myListings = allProducts.filter(p => p.ownerEmail === user?.email);
   const isMaster = user?.isMaster;
-  const plan = isMaster ? null : DEFAULT_PLANS.find(p => p.id === user?.subscription);
-  const limit = isMaster ? Infinity : (plan ? plan.listingLimit : 0);
+  const planList = livePlans || DEFAULT_PLANS;
+  const plan = isMaster ? null : planList.find(p => p.id === user?.subscription);
+  const limit = isMaster ? Infinity : (plan ? (plan.listingLimit ?? plan.rentals ?? 0) : 0);
   const canAdd = isMaster || myListings.length < limit;
 
   return (
@@ -988,7 +990,7 @@ function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDele
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1.25rem" }}>
             {myListings.map(p => (
-              <div key={p.id} style={{ background: "#fff", borderRadius: "20px", overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.06)", border: `2px solid ${C.border}`, transition: "all 0.2s" }} onMouseEnter={e => e.currentTarget.style.borderColor = C.gold} onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+              <div key={p.id} style={{ background: p.status === "inactive" ? "#f9fafb" : "#fff", borderRadius: "20px", overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.06)", border: `2px solid ${p.status === "inactive" ? "#e5e7eb" : C.border}`, transition: "all 0.2s", opacity: p.status === "inactive" ? 0.75 : 1 }} onMouseEnter={e => { if (p.status !== "inactive") e.currentTarget.style.borderColor = C.gold; }} onMouseLeave={e => e.currentTarget.style.borderColor = p.status === "inactive" ? "#e5e7eb" : C.border}>
                 <div style={{ position: "relative", height: "160px", background: `linear-gradient(135deg, ${C.bg}, #fff)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {p.photos?.length > 0
                     ? <img src={p.photos[0].url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -997,6 +999,8 @@ function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDele
                     ? <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#fef3c7", color: "#92400e", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>⏳ Pending Review</span>
                     : p.badge === "Rejected"
                     ? <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#fee2e2", color: "#991b1b", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>✕ Rejected</span>
+                    : p.status === "inactive"
+                    ? <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#f3f4f6", color: "#6b7280", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>⏰ Expired</span>
                     : <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#dcfce7", color: "#166534", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>✓ Live</span>
                   }
                   {p.photos?.length > 0 && <span style={{ position: "absolute", bottom: "0.6rem", left: "0.6rem", background: "rgba(0,0,0,0.55)", color: "#fff", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.7rem", fontWeight: 600 }}>📸 {p.photos.length}</span>}
@@ -1008,10 +1012,20 @@ function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDele
                     <PriceDisplay p={p} />
                     <div style={{ color: C.muted, fontSize: "0.82rem" }}>⭐ {p.rating?.toFixed(1)} · {p.reviews} reviews</div>
                   </div>
+                  {p.status === "inactive" ? (
+                    <div style={{ background: "#fef3c7", borderRadius: "10px", padding: "0.6rem 0.75rem", fontSize: "0.8rem", color: "#92400e", fontWeight: 600, textAlign: "center" }}>
+                      ⏰ Listing expired — upgrade your plan to reactivate
+                    </div>
+                  ) : (
                   <div style={{ display: "flex", gap: "0.6rem" }}>
                     <button onClick={() => onEditProduct(p)} style={{ flex: 1, padding: "0.6rem", border: `2px solid ${C.border}`, borderRadius: "10px", background: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif", fontSize: "0.85rem" }}>✏️ Edit</button>
-                    <button onClick={() => onDeleteProduct(p.id)} style={{ flex: 1, padding: "0.6rem", border: "none", borderRadius: "10px", background: "rgba(239,68,68,0.08)", color: C.red, cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif", fontSize: "0.85rem" }}>🗑️ Delete</button>
+                    <button
+                      onClick={() => isMaster && onDeleteProduct(p.id)}
+                      disabled={!isMaster}
+                      title={!isMaster ? "Only master admin can delete listings" : "Delete listing"}
+                      style={{ flex: 1, padding: "0.6rem", border: "none", borderRadius: "10px", background: isMaster ? "rgba(239,68,68,0.08)" : "rgba(0,0,0,0.04)", color: isMaster ? C.red : "#9ca3af", cursor: isMaster ? "pointer" : "not-allowed", fontWeight: 700, fontFamily: "'Outfit', sans-serif", fontSize: "0.85rem", opacity: isMaster ? 1 : 0.5 }}>🗑️ Delete</button>
                   </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -2081,6 +2095,16 @@ export default function RentCircle() {
   const handleListProduct = () => {
     if (!user) { setAuthOpen(true); return; }
     if (!user.subscription && !user.isMaster) { setSubGateOpen(true); return; }
+    // Enforce plan max rental (listing) limit
+    if (!user.isMaster && user.subscription) {
+      const activePlan = plans.find(p => p.id === user.subscription);
+      const limit = activePlan ? (activePlan.listingLimit ?? activePlan.rentals ?? Infinity) : Infinity;
+      const myCount = allProducts.filter(p => p.ownerEmail === user.email).length;
+      if (limit !== Infinity && limit >= 0 && myCount >= limit) {
+        showNotif(`⚠️ Your ${activePlan?.name || ""} plan allows max ${limit} listing${limit !== 1 ? "s" : ""}. Upgrade to add more.`, "error");
+        return;
+      }
+    }
     setAddProductOpen(true);
   };
 
@@ -2163,6 +2187,8 @@ export default function RentCircle() {
     let result = allProducts.filter(p => {
       // Never show products pending admin approval in the public browse grid
       if (p.badge === "Pending Review") return false;
+      // Never show expired/inactive products in the public catalogue
+      if (p.status === "inactive") return false;
       const matchCity = !selectedCity || (p.location || "").trim().toLowerCase() === selectedCity.toLowerCase();
       const matchCat = selectedCategory === "All" || p.category === selectedCategory;
       const matchSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase()) || (p.description || "").toLowerCase().includes(searchQuery.toLowerCase());
@@ -2266,7 +2292,7 @@ export default function RentCircle() {
           <button onClick={() => setAuthOpen(true)} style={{ background: C.dark, color: "#fff", border: "none", borderRadius: "14px", padding: "1rem 2.5rem", fontWeight: 800, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>Sign In / Sign Up</button>
         </div>
       ); }
-      return <MyListingsPage user={user} allProducts={allProducts} onAddProduct={() => setAddProductOpen(true)} onEditProduct={(p) => { setEditingProduct(p); setAddProductOpen(true); }} onDeleteProduct={handleDeleteProduct} onUpgrade={() => setSubGateOpen(true)} navigate={navigate} />;
+      return <MyListingsPage user={user} allProducts={allProducts} plans={plans} onAddProduct={() => setAddProductOpen(true)} onEditProduct={(p) => { setEditingProduct(p); setAddProductOpen(true); }} onDeleteProduct={handleDeleteProduct} onUpgrade={() => setSubGateOpen(true)} navigate={navigate} />;
     }
 
     return (
@@ -2623,6 +2649,11 @@ export default function RentCircle() {
                     <div style={{ background: "rgba(0,0,0,0.06)", borderRadius: "8px", padding: "0.5rem 0.75rem", margin: "0.75rem 0", fontSize: "0.82rem", fontWeight: 700, color: plan.accent }}>
                       📦 List up to {plan.listingLimit >= 999 ? "unlimited" : plan.listingLimit} products
                     </div>
+                    {plan.productExpiry && (
+                      <div style={{ background: "rgba(0,0,0,0.04)", borderRadius: "8px", padding: "0.4rem 0.75rem", marginBottom: "0.75rem", fontSize: "0.8rem", fontWeight: 600, color: "#6b7280", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        ⏳ Listings expire after {plan.productExpiry} days
+                      </div>
+                    )}
                     <ul style={{ listStyle: "none", padding: 0, margin: "0 0 1.5rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                       {plan.features.map(f => <li key={f} style={{ display: "flex", gap: "0.5rem", fontSize: "0.9rem" }}><span style={{ color: plan.accent }}>✓</span>{f}</li>)}
                     </ul>

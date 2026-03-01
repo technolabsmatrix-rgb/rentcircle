@@ -1575,25 +1575,94 @@ export default function AdminPortal() {
         )}
 
         {/* Plan Modal */}
-        {modal === "plan" && (
+        {modal === "plan" && (() => {
+          // Local raw features text stored in formData._featuresRaw for editing (allows blank lines while typing)
+          const rawFeatures = formData._featuresRaw !== undefined ? formData._featuresRaw : (formData.features || []).join("\n");
+          return (
           <div style={s.modal} onClick={closeModal}>
             <div style={s.mbox} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontWeight: 800, fontSize: "1.15rem", marginBottom: "1.5rem" }}>{formData.id ? "✏️ Edit" : "➕ Add"} Plan</h3>
               <label style={s.lbl}>Plan Name</label>
               <input style={s.inp} value={formData.name || ""} onChange={e => setFormData(d => ({ ...d, name: e.target.value }))} placeholder="Plan name" />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div><label style={s.lbl}>Price/month (₹)</label><input style={s.inp} type="number" value={formData.price || ""} onChange={e => setFormData(d => ({ ...d, price: +e.target.value }))} /></div>
-                <div><label style={s.lbl}>Max Rentals (-1=∞)</label><input style={s.inp} type="number" value={formData.rentals ?? ""} onChange={e => setFormData(d => ({ ...d, rentals: +e.target.value }))} /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+                <div>
+                  <label style={s.lbl}>Price/month (₹)</label>
+                  <input style={s.inp} type="number" value={formData.price || ""} onChange={e => setFormData(d => ({ ...d, price: +e.target.value }))} />
+                </div>
+                <div>
+                  <label style={s.lbl}>Max Rentals (-1=∞)</label>
+                  <input
+                    style={s.inp}
+                    type="text"
+                    inputMode="numeric"
+                    value={formData._rentalsRaw !== undefined ? formData._rentalsRaw : (formData.rentals ?? "")}
+                    onChange={e => {
+                      const raw = e.target.value;
+                      // Allow empty, minus sign, or valid integer
+                      if (raw === "" || raw === "-" || /^-?\d+$/.test(raw)) {
+                        const num = raw === "" || raw === "-" ? raw : parseInt(raw, 10);
+                        setFormData(d => ({ ...d, _rentalsRaw: raw, rentals: typeof num === "number" ? num : d.rentals }));
+                      }
+                    }}
+                    onBlur={e => {
+                      const raw = e.target.value;
+                      const num = parseInt(raw, 10);
+                      setFormData(d => ({ ...d, _rentalsRaw: undefined, rentals: isNaN(num) ? 0 : num }));
+                    }}
+                    placeholder="-1"
+                  />
+                </div>
+                <div>
+                  <label style={s.lbl}>Product Expiry (days)</label>
+                  <input
+                    style={s.inp}
+                    type="number"
+                    min="1"
+                    value={formData.productExpiry || ""}
+                    onChange={e => setFormData(d => ({ ...d, productExpiry: e.target.value ? +e.target.value : null }))}
+                    placeholder="e.g. 30"
+                  />
+                </div>
               </div>
+              {formData.productExpiry && (
+                <div style={{ background: "rgba(249,115,22,0.08)", border: `1px solid ${COLORS.border}`, borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: "0.75rem", fontSize: "0.78rem", color: COLORS.muted }}>
+                  ⏳ Listed products will expire after <strong>{formData.productExpiry} days</strong>
+                </div>
+              )}
               <label style={s.lbl}>Features (one per line)</label>
-              <textarea style={{ ...s.inp, height: "90px", resize: "vertical" }} value={(formData.features || []).join("\n")} onChange={e => setFormData(d => ({ ...d, features: e.target.value.split("\n").filter(Boolean) }))} />
+              <textarea
+                style={{ ...s.inp, height: "110px", resize: "vertical" }}
+                value={rawFeatures}
+                onChange={e => {
+                  const raw = e.target.value;
+                  setFormData(d => ({ ...d, _featuresRaw: raw, features: raw.split("\n").filter(Boolean) }));
+                }}
+                placeholder={"5 rentals/month\nStandard delivery\nEmail support"}
+              />
               <div style={{ display: "flex", gap: "0.75rem" }}>
                 <button style={{ ...s.btn("secondary"), flex: 1 }} onClick={closeModal}>Cancel</button>
-                <button style={{ ...s.btn("primary"), flex: 1 }} onClick={savePlan}>Save</button>
+                <button style={{ ...s.btn("primary"), flex: 1 }} onClick={() => {
+                  // Clean up raw helpers before saving
+                  setFormData(d => {
+                    const clean = { ...d };
+                    if (clean._featuresRaw !== undefined) {
+                      clean.features = clean._featuresRaw.split("\n").filter(f => f.trim());
+                      delete clean._featuresRaw;
+                    }
+                    if (clean._rentalsRaw !== undefined) {
+                      const n = parseInt(clean._rentalsRaw, 10);
+                      if (!isNaN(n)) clean.rentals = n;
+                      delete clean._rentalsRaw;
+                    }
+                    return clean;
+                  });
+                  setTimeout(savePlan, 0);
+                }}>Save</button>
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* User Modal */}
         {modal === "user" && (
