@@ -984,8 +984,10 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
 }
 
 /* ─── My Listings Page ─── */
-function MyListingsPage({ user, allProducts, plans: livePlans, onAddProduct, onEditProduct, onDeleteProduct, onUpgrade, navigate }) {
+function MyListingsPage({ user, allProducts, allOrders, plans: livePlans, onAddProduct, onEditProduct, onDeleteProduct, onUpgrade, navigate }) {
   const myListings = allProducts.filter(p => p.ownerEmail === user?.email);
+  // Build a set of product IDs that have any orders
+  const productIdsWithOrders = new Set((allOrders || []).map(o => Number(o.product_id)));
   const isMaster = user?.isMaster;
   const planList = livePlans || DEFAULT_PLANS;
   const plan = isMaster ? null : planList.find(p => p.id === user?.subscription);
@@ -1096,11 +1098,23 @@ function MyListingsPage({ user, allProducts, plans: livePlans, onAddProduct, onE
                   ) : (
                   <div style={{ display: "flex", gap: "0.6rem" }}>
                     <button onClick={() => onEditProduct(p)} style={{ flex: 1, padding: "0.6rem", border: `2px solid ${C.border}`, borderRadius: "10px", background: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif", fontSize: "0.85rem" }}>✏️ Edit</button>
-                    <button
-                      onClick={() => isMaster && onDeleteProduct(p.id)}
-                      disabled={!isMaster}
-                      title={!isMaster ? "Only master admin can delete listings" : "Delete listing"}
-                      style={{ flex: 1, padding: "0.6rem", border: "none", borderRadius: "10px", background: isMaster ? "rgba(239,68,68,0.08)" : "rgba(0,0,0,0.04)", color: isMaster ? C.red : "#9ca3af", cursor: isMaster ? "pointer" : "not-allowed", fontWeight: 700, fontFamily: "'Outfit', sans-serif", fontSize: "0.85rem", opacity: isMaster ? 1 : 0.5 }}>🗑️ Delete</button>
+                    {(() => {
+                      const hasOrders = productIdsWithOrders.has(Number(p.id));
+                      const isApproved = p.badge !== "Pending Review" && p.badge !== "Rejected";
+                      const canDelete = !hasOrders && !isApproved;
+                      const deleteTitle = hasOrders
+                        ? "Cannot delete — this listing has existing orders"
+                        : isApproved
+                        ? "Cannot delete — listing has been approved by admin. Contact admin to remove it."
+                        : "Delete listing";
+                      return (
+                        <button
+                          onClick={() => canDelete && onDeleteProduct(p.id)}
+                          disabled={!canDelete}
+                          title={deleteTitle}
+                          style={{ flex: 1, padding: "0.6rem", border: "none", borderRadius: "10px", background: canDelete ? "rgba(239,68,68,0.08)" : "rgba(0,0,0,0.04)", color: canDelete ? C.red : "#9ca3af", cursor: canDelete ? "pointer" : "not-allowed", fontWeight: 700, fontFamily: "'Outfit', sans-serif", fontSize: "0.85rem", opacity: canDelete ? 1 : 0.5 }}>🗑️ Delete</button>
+                      );
+                    })()}
                   </div>
                   )}
                 </div>
@@ -2035,6 +2049,7 @@ export default function RentCircle() {
   const [adminCategories, setAdminCategories] = useState([]);
   const [customFields, setCustomFields] = useState([]);
   const [plans, setPlans] = useState(DEFAULT_PLANS);
+  const [allOrders, setAllOrders] = useState([]);
 
   useEffect(() => {
     // ── Initial load ──────────────────────────────────────
@@ -2076,6 +2091,9 @@ export default function RentCircle() {
         const mapped = rows.filter(p => p.active !== false).map(dbPlanToFrontend)
         if (mapped.length) setPlans(mapped)
       })
+      .catch(() => {})
+    fetchOrders()
+      .then(rows => setAllOrders(rows))
       .catch(() => {})
 
     // ── Restore master user session on page load ──────────
@@ -2251,13 +2269,25 @@ export default function RentCircle() {
   };
 
   const handleDeleteProduct = async (id) => {
+    const product = allProducts.find(p => p.id === id);
+    // Block deletion if product has been admin-approved
+    if (product && product.badge !== "Pending Review" && product.badge !== "Rejected") {
+      showNotif("Cannot delete — this listing has been approved. Contact admin to remove it.", "error");
+      return;
+    }
+    // Block deletion if any orders exist for this product
+    const hasOrders = allOrders.some(o => Number(o.product_id) === Number(id));
+    if (hasOrders) {
+      showNotif("Cannot delete — this listing has existing orders.", "error");
+      return;
+    }
     try {
       await deleteProductInDb(id);
     } catch (e) {
       console.error("Delete product error:", e);
     }
     setAllProducts(prev => { const next = prev.filter(p => p.id !== id); writeCache(next); return next; });
-    showNotif("Listing removed", "info");
+    showNotif("Listing removed");
   };
 
   const handlePlanSubscribe = (plan) => {
@@ -2402,7 +2432,7 @@ export default function RentCircle() {
           <button onClick={() => setAuthOpen(true)} style={{ background: C.dark, color: "#fff", border: "none", borderRadius: "14px", padding: "1rem 2.5rem", fontWeight: 800, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>Sign In / Sign Up</button>
         </div>
       ); }
-      return <MyListingsPage user={user} allProducts={allProducts} plans={plans} onAddProduct={() => setAddProductOpen(true)} onEditProduct={(p) => { setEditingProduct(p); setAddProductOpen(true); }} onDeleteProduct={handleDeleteProduct} onUpgrade={() => setSubGateOpen(true)} navigate={navigate} />;
+      return <MyListingsPage user={user} allProducts={allProducts} allOrders={allOrders} plans={plans} onAddProduct={() => setAddProductOpen(true)} onEditProduct={(p) => { setEditingProduct(p); setAddProductOpen(true); }} onDeleteProduct={handleDeleteProduct} onUpgrade={() => setSubGateOpen(true)} navigate={navigate} />;
     }
 
     return (
