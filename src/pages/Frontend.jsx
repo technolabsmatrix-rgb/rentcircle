@@ -812,6 +812,39 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
                   </div>
                 </div>
               </div>
+              {/* Minimum Rental Duration */}
+              <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "12px", padding: "0.9rem 1rem", marginBottom: "1rem" }}>
+                <div style={{ fontSize: "0.73rem", fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.6rem" }}>⏱ Minimum Rental Duration <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.3rem" }}>Minimum Value</label>
+                    <input
+                      style={{ ...inp("minDuration"), marginBottom: 0 }}
+                      type="number" min="1" placeholder="e.g. 3"
+                      value={form.minDuration || ""}
+                      onChange={e => setForm(f => ({ ...f, minDuration: e.target.value ? +e.target.value : null }))}
+                      onFocus={() => setFocused("minDuration")} onBlur={() => setFocused(null)}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.3rem" }}>Unit</label>
+                    <select
+                      style={{ width: "100%", borderRadius: "12px", padding: "0.8rem 1rem", outline: "none", fontSize: "0.9rem", fontFamily: "'Outfit', sans-serif", boxSizing: "border-box", color: C.dark, border: `1.5px solid ${C.border}`, background: "#fff" }}
+                      value={form.minDurationType || "days"}
+                      onChange={e => setForm(f => ({ ...f, minDurationType: e.target.value }))}
+                    >
+                      <option value="days">Days</option>
+                      <option value="months">Months</option>
+                      <option value="years">Years</option>
+                    </select>
+                  </div>
+                </div>
+                {form.minDuration > 0 && (
+                  <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1d4ed8", fontWeight: 600 }}>
+                    📋 Renters must book at least {form.minDuration} {form.minDurationType}
+                  </div>
+                )}
+              </div>
               <div style={{ marginBottom: "1.5rem" }}>
                 <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Description</label>
                 <textarea style={{ ...inp("desc"), height: "80px", resize: "vertical" }} placeholder="Describe your product — age, accessories included, usage notes..." value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} onFocus={() => setFocused("desc")} onBlur={() => setFocused(null)} />
@@ -874,39 +907,6 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
                 </div>
               </div>
 
-              {/* Minimum Rental Duration */}
-              <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "12px", padding: "0.9rem 1rem", marginBottom: "1.25rem" }}>
-                <div style={{ fontSize: "0.73rem", fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.6rem" }}>⏱ Minimum Rental Duration <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.3rem" }}>Minimum Value</label>
-                    <input
-                      style={{ ...inp("minDuration"), marginBottom: 0 }}
-                      type="number" min="1" placeholder="e.g. 3"
-                      value={form.minDuration || ""}
-                      onChange={e => setForm(f => ({ ...f, minDuration: e.target.value ? +e.target.value : null }))}
-                      onFocus={() => setFocused("minDuration")} onBlur={() => setFocused(null)}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.3rem" }}>Unit</label>
-                    <select
-                      style={{ width: "100%", borderRadius: "12px", padding: "0.8rem 1rem", outline: "none", fontSize: "0.9rem", fontFamily: "'Outfit', sans-serif", boxSizing: "border-box", color: C.dark, border: `1.5px solid ${C.border}`, background: "#fff" }}
-                      value={form.minDurationType || "days"}
-                      onChange={e => setForm(f => ({ ...f, minDurationType: e.target.value }))}
-                    >
-                      <option value="days">Days</option>
-                      <option value="months">Months</option>
-                      <option value="years">Years</option>
-                    </select>
-                  </div>
-                </div>
-                {form.minDuration > 0 && (
-                  <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1d4ed8", fontWeight: 600 }}>
-                    📋 Renters must book at least {form.minDuration} {form.minDurationType}
-                  </div>
-                )}
-              </div>
               {/* Tags — master user only */}
               {user?.isMaster && adminTags.length > 0 && (
                 <div style={{ marginBottom: "1.25rem" }}>
