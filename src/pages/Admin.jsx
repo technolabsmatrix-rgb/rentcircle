@@ -308,6 +308,15 @@ export default function AdminPortal() {
   const [uSearch, setUSearch] = useState(""); const [uSort, setUSort] = useState(""); const [uDir, setUDir] = useState("asc"); const [uPlanFilter, setUPlanFilter] = useState(""); const [uStatusFilter, setUStatusFilter] = useState("");
   const [oSearch, setOSearch] = useState(""); const [oSort, setOSort] = useState(""); const [oDir, setODir] = useState("asc"); const [oStatusFilter, setOStatusFilter] = useState("");
   const [cSearch, setCSearch] = useState(""); const [tSearch, setTSearch] = useState("");
+  // Cities managed by admin
+  const [cities, setCities] = useState(() => {
+    try { const s = localStorage.getItem('rc_cities'); return s ? JSON.parse(s) : ["Mumbai", "Delhi", "Bangalore", "Pune", "Ahmedabad", "Chennai", "Hyderabad", "Kolkata"]; } catch { return ["Mumbai", "Delhi", "Bangalore", "Pune", "Ahmedabad"]; }
+  });
+  const [newCityInput, setNewCityInput] = useState("");
+  const saveCities = (updated) => {
+    setCities(updated);
+    try { localStorage.setItem('rc_cities', JSON.stringify(updated)); } catch {}
+  };
   // Pagination state: [page, perPage] for each grid
   const [pPage, setPPage] = useState(1); const [pPerPage, setPPerPage] = useState(10);
   const [uPage, setUPage] = useState(1); const [uPerPage, setUPerPage] = useState(10);
@@ -1121,6 +1130,71 @@ export default function AdminPortal() {
             </div>
           ))}
         </div>
+        {/* Cities Management */}
+        <div style={{ ...s.card, marginTop: "1.25rem" }}>
+          <div style={{ padding: "1rem 1.5rem", fontWeight: 700, borderBottom: `1px solid ${COLORS.border}`, fontSize: "0.95rem", color: COLORS.accent }}>
+            📍 Cities Management
+          </div>
+          <div style={{ padding: "1rem 1.5rem", borderBottom: `1px solid ${COLORS.border}` }}>
+            <div style={{ color: COLORS.muted, fontSize: "0.82rem", marginBottom: "1rem" }}>
+              Add cities below. Only these cities will appear in the product location dropdown and the city filter on the frontend.
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+              <input
+                style={{ ...s.inp, marginBottom: 0, flex: 1 }}
+                placeholder="e.g. Surat, Jaipur, Indore..."
+                value={newCityInput}
+                onChange={e => setNewCityInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && newCityInput.trim()) {
+                    const trimmed = newCityInput.trim();
+                    if (!cities.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+                      saveCities([...cities, trimmed].sort());
+                      showNotif(`"${trimmed}" added!`);
+                    } else {
+                      showNotif("City already exists", "error");
+                    }
+                    setNewCityInput("");
+                  }
+                }}
+              />
+              <button style={s.btn("primary")} onClick={() => {
+                const trimmed = newCityInput.trim();
+                if (!trimmed) return;
+                if (!cities.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+                  saveCities([...cities, trimmed].sort());
+                  showNotif(`"${trimmed}" added!`);
+                } else {
+                  showNotif("City already exists", "error");
+                }
+                setNewCityInput("");
+              }}>+ Add City</button>
+            </div>
+          </div>
+          <div style={{ padding: "1rem 1.5rem" }}>
+            {cities.length === 0 ? (
+              <div style={{ color: COLORS.muted, fontSize: "0.85rem", textAlign: "center", padding: "1.5rem" }}>No cities added yet. Add cities above to enable city-based filtering.</div>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                {cities.map(city => (
+                  <div key={city} style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: COLORS.accentLight, border: `1px solid ${COLORS.border}`, borderRadius: "8px", padding: "0.35rem 0.75rem", fontSize: "0.85rem", fontWeight: 600 }}>
+                    📍 {city}
+                    <button
+                      onClick={() => {
+                        if (!window.confirm(`Remove "${city}" from the city list?`)) return;
+                        saveCities(cities.filter(c => c !== city));
+                        showNotif(`"${city}" removed`, "error");
+                      }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.red, fontSize: "0.75rem", padding: "0 0.1rem", lineHeight: 1, fontWeight: 800 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ marginTop: "0.85rem", fontSize: "0.75rem", color: COLORS.muted }}>
+              {cities.length} {cities.length === 1 ? "city" : "cities"} configured · Changes apply instantly to product forms and frontend filters
+            </div>
+          </div>
+        </div>
       </>
     );
   };
@@ -1440,12 +1514,14 @@ export default function AdminPortal() {
                         </div>
                         <div>
                           <label style={s.lbl}>City / Location *</label>
-                          <input
-                            style={{ ...s.inp, marginBottom: 0, ...(modalErrors.location ? { border: `1.5px solid ${COLORS.red}`, background: "rgba(239,68,68,0.05)" } : {}) }}
-                            placeholder="e.g. Mumbai"
+                          <select
+                            style={{ ...selectStyle, marginBottom: 0, ...(modalErrors.location ? { border: `1.5px solid ${COLORS.red}`, background: "rgba(239,68,68,0.05)" } : {}) }}
                             value={formData.location || ""}
                             onChange={e => { setFormData(d => ({ ...d, location: e.target.value })); if (modalErrors.location) setModalErrors(me => ({ ...me, location: "" })); }}
-                          />
+                          >
+                            <option value="">Select city...</option>
+                            {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
                           {modalErrors.location && <div style={{ color: COLORS.red, fontSize: "0.7rem", marginTop: "0.3rem", fontWeight: 600 }}>⚠ {modalErrors.location}</div>}
                         </div>
                       </div>
@@ -1680,7 +1756,12 @@ export default function AdminPortal() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <div><label style={s.lbl}>Phone</label><input style={s.inp} type="tel" value={formData.phone || ""} onChange={e => setFormData(d => ({ ...d, phone: e.target.value }))} placeholder="+91 98765 43210" /></div>
-                <div><label style={s.lbl}>City</label><input style={s.inp} value={formData.city || ""} onChange={e => setFormData(d => ({ ...d, city: e.target.value }))} placeholder="Mumbai" /></div>
+                <div><label style={s.lbl}>City</label>
+                  <select style={selectStyle} value={formData.city || ""} onChange={e => setFormData(d => ({ ...d, city: e.target.value }))}>
+                    <option value="">Select city...</option>
+                    {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <div><label style={s.lbl}>Plan</label>

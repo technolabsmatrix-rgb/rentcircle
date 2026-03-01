@@ -826,7 +826,14 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Location / City *</label>
-                  <input style={inp("location")} placeholder="e.g. Mumbai" value={form.location} onChange={e => { setForm(f => ({ ...f, location: e.target.value })); setErrors(ev => ({ ...ev, location: "" })); }} onFocus={() => setFocused("location")} onBlur={() => setFocused(null)} />
+                  {availableCities.length > 0 ? (
+                    <select style={{ ...inp("location"), cursor: "pointer" }} value={form.location} onChange={e => { setForm(f => ({ ...f, location: e.target.value })); setErrors(ev => ({ ...ev, location: "" })); }} onFocus={() => setFocused("location")} onBlur={() => setFocused(null)}>
+                      <option value="">Select city...</option>
+                      {availableCities.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  ) : (
+                    <input style={inp("location")} placeholder="e.g. Mumbai" value={form.location} onChange={e => { setForm(f => ({ ...f, location: e.target.value })); setErrors(ev => ({ ...ev, location: "" })); }} onFocus={() => setFocused("location")} onBlur={() => setFocused(null)} />
+                  )}
                   <ErrMsg field="location" />
                 </div>
               </div>
@@ -1811,7 +1818,14 @@ function ProfilePage({ user, onUpdate, onUpgrade, currentPlan, navigate }) {
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>City / Location</label>
-                  <input style={inp("city")} placeholder="e.g. Mumbai, Delhi..." value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} onFocus={() => setFocused("city")} onBlur={() => setFocused(null)} />
+                  {availableCities.length > 0 ? (
+                    <select style={inp("city")} value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} onFocus={() => setFocused("city")} onBlur={() => setFocused(null)}>
+                      <option value="">Select city...</option>
+                      {availableCities.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  ) : (
+                    <input style={inp("city")} placeholder="e.g. Mumbai, Delhi..." value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} onFocus={() => setFocused("city")} onBlur={() => setFocused(null)} />
+                  )}
                 </div>
               </div>
 
@@ -1941,7 +1955,9 @@ export default function RentCircle() {
   const [filterTag, setFilterTag] = useState(""); const [showFilters, setShowFilters] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState("");
-  const [availableCities, setAvailableCities] = useState([]);
+  const [availableCities, setAvailableCities] = useState(() => {
+    try { const s = localStorage.getItem('rc_cities'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
 
   // Load from Supabase (falls back to defaults if unavailable)
   const [flags, setFlags] = useState({ subscriptionPlans: true, tagging: true, smartSearch: true, phoneVerification: true, emailVerification: true, customFields: true });
@@ -1953,18 +1969,17 @@ export default function RentCircle() {
   useEffect(() => {
     // ── Initial load ──────────────────────────────────────
     const _cached = readCache();
-    // Helper to extract unique cities from product list
-    const extractCities = (rows) => {
-      const cities = [...new Set(rows.map(p => p.location).filter(Boolean).map(c => c.trim()).filter(c => c.length > 0))].sort();
-      setAvailableCities(cities);
+    // Helper to sync cities from admin localStorage
+    const syncCities = () => {
+      try { const s = localStorage.getItem('rc_cities'); if (s) setAvailableCities(JSON.parse(s)); } catch {}
     };
 
     if (!_cached || _cached.stale) {
       fetchProducts()
-        .then(rows => { setAllProducts(rows); writeCache(rows); extractCities(rows); })
+        .then(rows => { setAllProducts(rows); writeCache(rows); syncCities(); })
         .catch(() => {})
     } else {
-      extractCities(_cached.data || []);
+      syncCities();
     }
     fetchTags()
       .then(rows => setAdminTags(rows.filter(t => t.active)))
@@ -2177,11 +2192,14 @@ export default function RentCircle() {
     setSelectedProduct(null);
   };
 
-  // Keep availableCities in sync with allProducts
+  // Keep availableCities in sync with admin localStorage settings
   useEffect(() => {
-    const cities = [...new Set(allProducts.map(p => p.location).filter(Boolean).map(c => c.trim()).filter(c => c.length > 0))].sort();
-    setAvailableCities(cities);
-  }, [allProducts]);
+    const handleStorage = () => {
+      try { const s = localStorage.getItem('rc_cities'); if (s) setAvailableCities(JSON.parse(s)); } catch {}
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const filteredProducts = useMemo(() => {
     let result = allProducts.filter(p => {
