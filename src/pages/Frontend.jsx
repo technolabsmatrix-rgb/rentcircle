@@ -1437,6 +1437,192 @@ function RentPhotoCarousel({ photos, fallback }) {
   );
 }
 
+/* ─── Profile Page ─── */
+function ProfilePage({ user, onUpdate, onUpgrade, currentPlan, navigate }) {
+  const [form, setForm] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    city: user?.city || "",
+    bio: user?.bio || "",
+  });
+  const [focused, setFocused] = useState(null);
+  const [saved, setSaved] = useState(false);
+  const [tab, setTab] = useState("profile"); // "profile" | "security" | "subscription"
+
+  const inp = (id) => ({
+    width: "100%", border: `1.5px solid ${focused === id ? C.dark : C.border}`, borderRadius: "12px",
+    padding: "0.8rem 1rem", outline: "none", fontSize: "0.92rem", fontFamily: "'Outfit', sans-serif",
+    boxSizing: "border-box", transition: "border-color 0.2s", color: C.dark, background: "#fff",
+  });
+
+  const handleSave = () => {
+    onUpdate({ ...user, ...form });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const initials = (user?.name || "U").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+
+  return (
+    <>
+      <PageHero icon="👤" title="My Profile" subtitle="Manage your personal information and account settings." />
+      <div style={{ padding: "3rem 2rem", maxWidth: "900px", margin: "0 auto" }}>
+
+        {/* Tab bar */}
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "2rem", background: "#fff", borderRadius: "16px", padding: "0.4rem", border: `1px solid ${C.border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.04)", width: "fit-content" }}>
+          {[["profile","👤 Profile"],["security","🔒 Security"],["subscription","⭐ Subscription"]].map(([key, label]) => (
+            <button key={key} onClick={() => setTab(key)} style={{ padding: "0.55rem 1.25rem", borderRadius: "10px", border: "none", background: tab === key ? C.dark : "transparent", color: tab === key ? "#fff" : C.muted, fontFamily: "'Outfit', sans-serif", fontWeight: tab === key ? 700 : 500, fontSize: "0.88rem", cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── PROFILE TAB ── */}
+        {tab === "profile" && (
+          <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "2rem", alignItems: "start" }} className="rc-profile-grid">
+            {/* Avatar card */}
+            <div style={{ background: "#fff", borderRadius: "24px", padding: "2rem", border: `1px solid ${C.border}`, textAlign: "center", boxShadow: "0 2px 12px rgba(0,0,0,0.05)", position: "sticky", top: "90px" }}>
+              <div style={{ width: "96px", height: "96px", borderRadius: "50%", background: currentPlan ? currentPlan.accent : `linear-gradient(135deg, ${C.dark}, #2d3a6e)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: "2rem", margin: "0 auto 1.25rem", boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }}>{initials}</div>
+              <div style={{ fontWeight: 800, fontSize: "1.1rem", marginBottom: "0.25rem", color: C.dark }}>{form.name || user?.name}</div>
+              <div style={{ color: C.muted, fontSize: "0.82rem", marginBottom: "1rem" }}>{user?.email}</div>
+              {currentPlan ? (
+                <div style={{ background: currentPlan.color, color: currentPlan.accent, borderRadius: "8px", padding: "0.35rem 0.85rem", fontSize: "0.78rem", fontWeight: 700, display: "inline-block", marginBottom: "1rem" }}>⭐ {currentPlan.name} Plan</div>
+              ) : (
+                <div onClick={() => onUpgrade()} style={{ background: "#faf5ff", color: "#7c3aed", borderRadius: "8px", padding: "0.35rem 0.85rem", fontSize: "0.78rem", fontWeight: 700, display: "inline-block", marginBottom: "1rem", cursor: "pointer", border: "1px solid rgba(124,58,237,0.2)" }}>🔒 No Plan</div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left", fontSize: "0.82rem", color: C.muted }}>
+                {[
+                  ["📧", "Email", user?.emailVerified ? "✅ Verified" : "⚠️ Not verified"],
+                  ["📱", "Phone", user?.phoneVerified ? "✅ Verified" : "⚠️ Not verified"],
+                  ["🗓️", "Member since", "2025"],
+                ].map(([icon, label, val]) => (
+                  <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: `1px solid ${C.border}` }}>
+                    <span>{icon} {label}</span>
+                    <span style={{ fontWeight: 600, color: val.includes("✅") ? "#059669" : val.includes("⚠️") ? "#d97706" : C.dark }}>{val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Form */}
+            <div style={{ background: "#fff", borderRadius: "24px", padding: "2rem", border: `1px solid ${C.border}`, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+              <h3 style={{ fontWeight: 800, fontSize: "1.15rem", marginBottom: "1.5rem", color: C.dark }}>Personal Information</h3>
+
+              {saved && (
+                <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "10px", padding: "0.75rem 1rem", marginBottom: "1.25rem", color: "#166534", fontSize: "0.88rem", fontWeight: 600 }}>
+                  ✅ Profile updated successfully!
+                </div>
+              )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Full Name</label>
+                  <input style={inp("name")} placeholder="Your full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} onFocus={() => setFocused("name")} onBlur={() => setFocused(null)} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Email</label>
+                  <input style={{ ...inp("email"), background: "#f9fafb", color: C.muted, cursor: "not-allowed" }} value={form.email} readOnly disabled />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Phone Number</label>
+                  <input style={inp("phone")} placeholder="+91 XXXXX XXXXX" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} onFocus={() => setFocused("phone")} onBlur={() => setFocused(null)} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>City / Location</label>
+                  <input style={inp("city")} placeholder="e.g. Mumbai, Delhi..." value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} onFocus={() => setFocused("city")} onBlur={() => setFocused(null)} />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "1.5rem" }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Bio <span style={{ fontWeight: 400, textTransform: "none" }}>(optional)</span></label>
+                <textarea style={{ ...inp("bio"), height: "100px", resize: "vertical" }} placeholder="Tell other renters a bit about yourself..." value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} onFocus={() => setFocused("bio")} onBlur={() => setFocused(null)} />
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <button onClick={() => navigate("home")} style={{ flex: 1, padding: "0.9rem", border: `2px solid ${C.border}`, borderRadius: "12px", background: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif", color: C.dark }}>Cancel</button>
+                <button onClick={handleSave} style={{ flex: 2, padding: "0.9rem", border: "none", borderRadius: "12px", background: C.dark, color: "#fff", cursor: "pointer", fontWeight: 800, fontFamily: "'Outfit', sans-serif", fontSize: "1rem" }}>Save Changes ✓</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── SECURITY TAB ── */}
+        {tab === "security" && (
+          <div style={{ background: "#fff", borderRadius: "24px", padding: "2rem", border: `1px solid ${C.border}`, boxShadow: "0 2px 12px rgba(0,0,0,0.05)", maxWidth: "560px" }}>
+            <h3 style={{ fontWeight: 800, fontSize: "1.15rem", marginBottom: "0.5rem", color: C.dark }}>Password & Security</h3>
+            <p style={{ color: C.muted, fontSize: "0.88rem", marginBottom: "2rem" }}>Manage your password and account security settings.</p>
+
+            {[
+              { label: "Email Verification", status: user?.emailVerified, desc: "Verified accounts get priority support and higher trust scores.", action: user?.emailVerified ? null : "Resend Email", color: "#059669", bg: "#f0fdf4" },
+              { label: "Phone Verification", status: user?.phoneVerified, desc: "Adding a verified phone number increases your account security.", action: user?.phoneVerified ? null : "Verify Now", color: "#2563eb", bg: "#eff6ff" },
+            ].map(item => (
+              <div key={item.label} style={{ background: item.status ? item.bg : "#fff9f0", borderRadius: "14px", padding: "1.25rem 1.5rem", marginBottom: "1rem", border: `1px solid ${item.status ? item.color + "33" : "#d9770633"}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: C.dark, marginBottom: "0.2rem" }}>
+                    {item.status ? "✅" : "⚠️"} {item.label}
+                  </div>
+                  <div style={{ color: C.muted, fontSize: "0.82rem" }}>{item.desc}</div>
+                </div>
+                {item.action && (
+                  <button style={{ padding: "0.5rem 1.1rem", border: `1.5px solid ${item.color}`, borderRadius: "10px", background: "#fff", color: item.color, fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", whiteSpace: "nowrap" }}>{item.action}</button>
+                )}
+              </div>
+            ))}
+
+            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: "1.5rem", marginTop: "0.5rem" }}>
+              <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: "0.4rem", color: C.dark }}>🔑 Change Password</div>
+              <p style={{ color: C.muted, fontSize: "0.85rem", marginBottom: "1rem" }}>A password reset link will be sent to your registered email address.</p>
+              <button style={{ padding: "0.75rem 1.5rem", border: `2px solid ${C.border}`, borderRadius: "12px", background: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif", color: C.dark }}>Send Reset Link →</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── SUBSCRIPTION TAB ── */}
+        {tab === "subscription" && (
+          <div style={{ background: "#fff", borderRadius: "24px", padding: "2rem", border: `1px solid ${C.border}`, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+            <h3 style={{ fontWeight: 800, fontSize: "1.15rem", marginBottom: "0.5rem", color: C.dark }}>Subscription & Billing</h3>
+            <p style={{ color: C.muted, fontSize: "0.88rem", marginBottom: "2rem" }}>Your current plan and billing information.</p>
+
+            {currentPlan ? (
+              <div>
+                <div style={{ background: `linear-gradient(135deg, ${currentPlan.color}, #fff)`, border: `2px solid ${currentPlan.accent}`, borderRadius: "20px", padding: "1.75rem 2rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <div style={{ width: "52px", height: "52px", borderRadius: "14px", background: currentPlan.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>⭐</div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: "1.2rem", color: C.dark }}>{currentPlan.name} Plan</div>
+                      <div style={{ color: C.muted, fontSize: "0.88rem" }}>{INR(currentPlan.price)}/month · Active</div>
+                    </div>
+                  </div>
+                  <div style={{ background: "#fff", borderRadius: "12px", padding: "0.5rem 1.25rem", border: `1px solid ${C.border}` }}>
+                    <div style={{ fontSize: "0.72rem", color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>Renews</div>
+                    <div style={{ fontWeight: 700, color: C.dark, fontSize: "0.9rem" }}>Auto renewal</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "0.75rem" }}>
+                  <button onClick={() => navigate("plans")} style={{ flex: 1, padding: "0.9rem", border: `2px solid ${C.border}`, borderRadius: "12px", background: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "'Outfit', sans-serif", color: C.dark }}>Upgrade Plan</button>
+                  <button onClick={() => navigate("my-listings")} style={{ flex: 2, padding: "0.9rem", border: "none", borderRadius: "12px", background: currentPlan.accent, color: "#fff", cursor: "pointer", fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Manage Listings →</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", padding: "3rem 2rem", background: "#faf5ff", borderRadius: "20px", border: "2px dashed rgba(124,58,237,0.3)" }}>
+                <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>🔒</div>
+                <h4 style={{ fontWeight: 800, fontSize: "1.2rem", marginBottom: "0.5rem", color: C.dark }}>No Active Subscription</h4>
+                <p style={{ color: C.muted, fontSize: "0.9rem", marginBottom: "1.5rem", maxWidth: "380px", margin: "0 auto 1.5rem" }}>Subscribe to a plan to start listing your products and earning on RentCircle.</p>
+                <button onClick={() => onUpgrade()} style={{ background: C.dark, color: "#fff", border: "none", borderRadius: "12px", padding: "0.9rem 2.5rem", fontWeight: 800, fontFamily: "'Outfit', sans-serif", cursor: "pointer" }}>View Plans →</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      <style>{`.rc-profile-grid { display: grid; grid-template-columns: 280px 1fr; gap: 2rem; } @media (max-width: 768px) { .rc-profile-grid { grid-template-columns: 1fr !important; } }`}</style>
+    </>
+  );
+}
+
 /* ─── Main App ─── */
 export default function RentCircle() {
   const [activeTab, setActiveTab] = useState("home");
@@ -1682,6 +1868,10 @@ export default function RentCircle() {
     if (activeTab === "privacy") return <PrivacyPage />;
     if (activeTab === "refund") return <RefundPage />;
     if (activeTab === "terms") return <TermsPage />;
+    if (activeTab === "profile") {
+      if (!user) { navigate("home"); return null; }
+      return <ProfilePage user={user} onUpdate={(u) => { setUser(u); showNotif("Profile updated! ✓"); }} onUpgrade={() => setSubGateOpen(true)} currentPlan={currentPlan} navigate={navigate} />;
+    }
     if (activeTab === "my-listings") {
       if (!user) { return (
         <div style={{ padding: "6rem 2rem", textAlign: "center" }}>
@@ -2170,7 +2360,7 @@ export default function RentCircle() {
                       {currentPlan ? <div style={{ marginTop: "0.3rem", background: currentPlan.color, color: currentPlan.accent, borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700, display: "inline-block" }}>⭐ {currentPlan.name} Plan</div>
                         : <div style={{ marginTop: "0.3rem", background: "#faf5ff", color: "#7c3aed", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700, display: "inline-block", cursor: "pointer" }} onClick={() => { setUserMenuOpen(false); setSubGateOpen(true); }}>🔒 No Plan — Subscribe</div>}
                     </div>
-                    {[["My Rentals","home"],["My Listings","my-listings"],["Profile","home"],["Settings","home"]].map(([label, tab]) => (
+                    {[["My Rentals","home"],["My Listings","my-listings"],["Profile","profile"],["Settings","profile"]].map(([label, tab]) => (
                       <div key={label} onClick={() => navigate(tab)} style={{ padding: "0.6rem 0.75rem", borderRadius: "8px", cursor: "pointer", fontSize: "0.92rem", color: C.dark, display: "flex", alignItems: "center", gap: "0.5rem" }} onMouseEnter={e => e.currentTarget.style.background = C.bg} onMouseLeave={e => e.currentTarget.style.background = ""}>
                         {label === "My Listings" ? "🏪" : label === "My Rentals" ? "📦" : label === "Profile" ? "👤" : "⚙️"} {label}
                       </div>
