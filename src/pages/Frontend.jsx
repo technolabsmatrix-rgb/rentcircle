@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { fetchProducts, fetchTags, fetchFlags, fetchCustomFields, fetchPlans, fromDbProduct, subscribeTo, supabase, onAuthChange } from "../lib/supabase";
+import { insertProduct, updateProduct as updateProductInDb, deleteProduct as deleteProductInDb } from "../lib/supabase";
 
 // Fetch active categories from Supabase
 const fetchCategories = () =>
@@ -1898,24 +1899,63 @@ export default function RentCircle() {
     setAddProductOpen(true);
   };
 
-  const handleSaveProduct = (product) => {
-    if (editingProduct) {
-      setAllProducts(prev => prev.map(p => p.id === product.id ? product : p));
-      showNotif("Product updated successfully! ✓");
-    } else if (product.status === "pending_approval") {
-      // Add to local state but it won't show in public grid (filtered out)
-      setAllProducts(prev => [...prev, product]);
-      showNotif("Product submitted for review! ⏳ Admin will approve it shortly.");
-    } else {
-      setAllProducts(prev => [...prev, product]);
-      showNotif("Product listed successfully! 🚀");
+  const handleSaveProduct = async (product) => {
+    try {
+      // Build DB-compatible object (matches Admin's saveProduct shape)
+      const dbData = {
+        name: product.name,
+        category: product.category,
+        price: product.priceDay,
+        priceDay: product.priceDay,
+        priceMonth: product.priceMonth,
+        priceYear: product.priceYear,
+        description: product.description || "",
+        image: product.image || "📦",
+        condition: product.condition || "Good",
+        location: product.location || "",
+        tags: product.tags || [],
+        photos: product.photos || [],
+        stock: product.stock ?? 1,
+        rentals: product.rentals ?? 0,
+        rating: product.rating ?? 5.0,
+        reviews: product.reviews ?? 0,
+        badge: product.badge || "New",
+        owner: product.owner,
+        ownerEmail: product.ownerEmail,
+        status: product.status || "pending_approval",
+      };
+
+      if (editingProduct) {
+        // Update existing product in DB
+        await updateProductInDb(editingProduct.id, dbData);
+        setAllProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...product } : p));
+        showNotif("Product updated successfully! ✓");
+      } else {
+        // Insert new product into DB
+        const inserted = await insertProduct(dbData);
+        const newProduct = inserted ? fromDbProduct(inserted) : { ...product, id: Date.now() };
+        setAllProducts(prev => [...prev, newProduct]);
+        if (product.status === "pending_approval") {
+          showNotif("Product submitted for review! ⏳ Admin will approve it shortly.");
+        } else {
+          showNotif("Product listed successfully! 🚀");
+        }
+      }
+    } catch (e) {
+      console.error("Save product error:", e);
+      showNotif("Failed to save product: " + (e.message || "Unknown error"), "error");
     }
     setAddProductOpen(false);
     setEditingProduct(null);
     navigate("my-listings");
   };
 
-  const handleDeleteProduct = (id) => {
+  const handleDeleteProduct = async (id) => {
+    try {
+      await deleteProductInDb(id);
+    } catch (e) {
+      console.error("Delete product error:", e);
+    }
     setAllProducts(prev => prev.filter(p => p.id !== id));
     showNotif("Listing removed", "info");
   };
