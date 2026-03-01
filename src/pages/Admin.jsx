@@ -413,6 +413,8 @@ export default function AdminPortal() {
       priceDay, price: priceDay,
       priceMonth: formData.priceMonth || Math.round(priceDay * 25),
       priceYear: formData.priceYear || Math.round(priceDay * 280),
+      minRentUnit: formData.minRentUnit || "day",
+      minRentValue: formData.minRentValue || 1,
       tags: formData.tags || [],
       image: formData.image || "📦",
       condition: formData.condition || "Excellent",
@@ -1461,6 +1463,36 @@ export default function AdminPortal() {
                           value={formData.description || ""}
                           onChange={e => setFormData(d => ({ ...d, description: e.target.value }))}
                         />
+                      </div>
+
+                      {/* Minimum Rental Period */}
+                      <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "12px", padding: "0.9rem 1rem", marginBottom: "1rem" }}>
+                        <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.65rem" }}>⏱ Minimum Rental Period</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                          <div>
+                            <label style={s.lbl}>Minimum Value</label>
+                            <input
+                              style={{ ...s.inp, marginBottom: 0 }}
+                              type="number" min="1" placeholder="e.g. 3"
+                              value={formData.minRentValue || 1}
+                              onChange={e => setFormData(d => ({ ...d, minRentValue: Math.max(1, parseInt(e.target.value) || 1) }))}
+                            />
+                          </div>
+                          <div>
+                            <label style={s.lbl}>Unit</label>
+                            <div style={{ display: "flex", border: `1px solid ${COLORS.border}`, borderRadius: "10px", overflow: "hidden", height: "42px" }}>
+                              {[["day","Days"],["month","Months"],["year","Years"]].map(([k, label]) => (
+                                <button key={k} type="button" onClick={() => setFormData(d => ({ ...d, minRentUnit: k }))}
+                                  style={{ flex: 1, border: "none", background: (formData.minRentUnit || "day") === k ? COLORS.accent : COLORS.bg, color: (formData.minRentUnit || "day") === k ? "#fff" : COLORS.muted, cursor: "pointer", fontWeight: (formData.minRentUnit || "day") === k ? 700 : 500, fontSize: "0.78rem", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s" }}>
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ marginTop: "0.5rem", fontSize: "0.73rem", color: "#92400e" }}>
+                          Renters must rent at least <strong>{formData.minRentValue || 1} {(formData.minRentUnit || "day") === "day" ? ((formData.minRentValue || 1) > 1 ? "days" : "day") : (formData.minRentUnit || "day") === "month" ? ((formData.minRentValue || 1) > 1 ? "months" : "month") : ((formData.minRentValue || 1) > 1 ? "years" : "year")}</strong>
+                        </div>
                       </div>
                       <button onClick={() => {
                         const priceDay = formData.priceDay || formData.price || 0;
