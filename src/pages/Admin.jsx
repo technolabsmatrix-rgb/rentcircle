@@ -419,8 +419,10 @@ export default function AdminPortal() {
       status: formData.status || "active",
       badge: formData.badge !== undefined ? formData.badge : "New",
       photos,
-      minDuration: formData.minDuration || null,
-      minDurationType: formData.minDurationType || "days",
+      min_duration: formData.minDuration || formData.min_duration || null,
+      min_duration_type: formData.minDurationType || formData.min_duration_type || "days",
+      minDuration: formData.minDuration || formData.min_duration || null,
+      minDurationType: formData.minDurationType || formData.min_duration_type || "days",
       // Admin-added products are always owned by Master Admin
       ...(isNew ? { owner: "Master Admin", ownerEmail: "master@rentcircle.in" } : {}),
     };
@@ -746,7 +748,7 @@ export default function AdminPortal() {
                 {(!featureFlags.tagging || !(p.tags || []).length) && <span style={{ color: COLORS.muted, fontSize: "0.72rem" }}>—</span>}
               </div>
               <div style={{ display: "flex", gap: "0.4rem" }}>
-                <button style={{ ...s.btn("secondary"), padding: "0.35rem 0.7rem", fontSize: "0.78rem" }} onClick={() => openModal("product", { ...p, tags: p.tags || [], image: p.image || "📦", condition: p.condition || "Excellent", status: p.status || "active", badge: p.badge || "New", _step: 1, _photos: (p.photos || []).map(u => ({ id: Math.random(), url: u.url || u, name: "" })) })}>Edit</button>
+                <button style={{ ...s.btn("secondary"), padding: "0.35rem 0.7rem", fontSize: "0.78rem" }} onClick={() => openModal("product", { ...p, tags: p.tags || [], image: p.image || "📦", condition: p.condition || "Excellent", status: p.status || "active", badge: p.badge || "New", _step: 1, _photos: (p.photos || []).map(u => ({ id: Math.random(), url: u.url || u, name: "" })), minDuration: p.minDuration || p.min_duration || null, minDurationType: p.minDurationType || p.min_duration_type || "days" })}>Edit</button>
                 <button style={{ ...s.btn("danger"), padding: "0.35rem 0.7rem", fontSize: "0.78rem" }} onClick={async () => {
                   if (!window.confirm(`Delete "${p.name}"?`)) return;
                   try {

@@ -666,7 +666,7 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
   const categoryList = dbCategories.length > 0
     ? dbCategories.map(c => c.name)
     : ["Electronics", "Sports", "Outdoor", "Gaming", "Tools", "Fashion"];
-  const [form, setForm] = useState(editProduct ? { ...editProduct } : { name: "", category: categoryList[0] || "Electronics", priceDay: "", priceMonth: "", priceYear: "", description: "", image: "📷", condition: "Excellent", location: "", tags: [] });
+  const [form, setForm] = useState(editProduct ? { ...editProduct, minDuration: editProduct.minDuration || editProduct.min_duration || null, minDurationType: editProduct.minDurationType || editProduct.min_duration_type || "days" } : { name: "", category: categoryList[0] || "Electronics", priceDay: "", priceMonth: "", priceYear: "", description: "", image: "📷", condition: "Excellent", location: "", tags: [], minDuration: null, minDurationType: "days" });
   const [photos, setPhotos] = useState(editProduct?.photos || []);
   const [focused, setFocused] = useState(null);
   const [step, setStep] = useState(1);
@@ -2214,6 +2214,8 @@ export default function RentCircle() {
         ownerEmail: product.ownerEmail,
         status: "active",
         badge: "Pending Review",
+        min_duration: product.minDuration || null,
+        min_duration_type: product.minDurationType || "days",
         minDuration: product.minDuration || null,
         minDurationType: product.minDurationType || "days",
       };
@@ -2528,7 +2530,7 @@ export default function RentCircle() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "1.25rem", justifyContent: "center" }}>
                   {featuredProducts.map((p, idx) => (
                     <div key={p.id}
-                      onClick={() => { const initPeriod = p.minDurationType === "months" ? "month" : p.minDurationType === "years" ? "year" : "day"; const initDays = p.minDuration || 1; setSelectedProduct(p); setRentPeriod(initPeriod); setRentDays(initDays); setRentStartDate(""); setRentEndDate(""); }}
+                      onClick={() => { const minDur = p.minDuration || p.min_duration || null; const minDurType = p.minDurationType || p.min_duration_type || "days"; const initPeriod = minDurType === "months" ? "month" : minDurType === "years" ? "year" : "day"; const initDays = minDur || 1; setSelectedProduct({ ...p, minDuration: minDur, minDurationType: minDurType }); setRentPeriod(initPeriod); setRentDays(initDays); setRentStartDate(""); setRentEndDate(""); }}
                       style={{ background: "rgba(255,255,255,0.06)", borderRadius: "20px", border: "1.5px solid rgba(255,255,255,0.1)", padding: "1.5rem", cursor: "pointer", transition: "all 0.25s", backdropFilter: "blur(8px)", position: "relative", overflow: "hidden", width: "280px", flexShrink: 0 }}
                       onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.11)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.5)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = ""; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}>
@@ -2708,7 +2710,7 @@ export default function RentCircle() {
                     <div style={{ color: "#9ca3af", fontSize: "0.8rem", marginBottom: "0.75rem" }}>{p.category} · ⭐ {p.rating} ({p.reviews}){p.location ? ` · 📍${p.location}` : ""}</div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <PriceDisplay p={p} />
-                      <button onClick={() => { const initPeriod = p.minDurationType === "months" ? "month" : p.minDurationType === "years" ? "year" : "day"; const initDays = p.minDuration || 1; setSelectedProduct(p); setRentPeriod(initPeriod); setRentDays(initDays); setRentStartDate(""); setRentEndDate(""); }} style={{ background: C.dark, color: "#fff", border: "none", borderRadius: "10px", padding: "0.5rem 1.2rem", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem", fontFamily: "'Outfit', sans-serif" }}>Rent Now</button>
+                      <button onClick={() => { const minDur = p.minDuration || p.min_duration || null; const minDurType = p.minDurationType || p.min_duration_type || "days"; const initPeriod = minDurType === "months" ? "month" : minDurType === "years" ? "year" : "day"; const initDays = minDur || 1; setSelectedProduct({ ...p, minDuration: minDur, minDurationType: minDurType }); setRentPeriod(initPeriod); setRentDays(initDays); setRentStartDate(""); setRentEndDate(""); }} style={{ background: C.dark, color: "#fff", border: "none", borderRadius: "10px", padding: "0.5rem 1.2rem", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem", fontFamily: "'Outfit', sans-serif" }}>Rent Now</button>
                     </div>
                   </div>
                 </div>
