@@ -328,11 +328,16 @@ export default function AdminPortal() {
     return result;
   };
 
-  const filteredProducts = useMemo(() => sortAndFilter(products, pSearch, ["name", "category", "owner"], pSort, pDir, [
-    [pCatFilter, (p, v) => p.category === v],
-    [pStatusFilter, (p, v) => p.status === v],
-    [pUserFilter, (p, v) => p.ownerEmail === v],
-  ]), [products, pSearch, pSort, pDir, pCatFilter, pStatusFilter, pUserFilter]);
+  const pendingProducts = useMemo(() => products.filter(p => p.status === "pending_approval"), [products]);
+
+  const filteredProducts = useMemo(() => sortAndFilter(
+    products.filter(p => p.status !== "pending_approval"),
+    pSearch, ["name", "category", "owner"], pSort, pDir, [
+      [pCatFilter, (p, v) => p.category === v],
+      [pStatusFilter, (p, v) => p.status === v],
+      [pUserFilter, (p, v) => p.ownerEmail === v],
+    ]
+  ), [products, pSearch, pSort, pDir, pCatFilter, pStatusFilter, pUserFilter]);
 
   const filteredUsers = useMemo(() => sortAndFilter(users, uSearch, ["name", "email", "city"], uSort, uDir, [
     [uPlanFilter, (u, v) => u.plan === v],
@@ -350,6 +355,21 @@ export default function AdminPortal() {
   if (!adminUser) return <AdminLogin onLogin={u => setAdminUser(u)} />;
 
   const showNotif = (msg, type = "success") => { setNotification({ msg, type }); setTimeout(() => setNotification(null), 3500); };
+
+  const approveProduct = async (product) => {
+    try {
+      await updateProductDb(product.id, { ...product, status: "active" });
+      showNotif(`"${product.name}" approved and is now live!`);
+    } catch (e) { showNotif("Approve failed: " + e.message, "error"); }
+  };
+
+  const rejectProduct = async (product) => {
+    if (!window.confirm(`Reject "${product.name}"? This will remove it from the platform.`)) return;
+    try {
+      await removeProduct(product.id);
+      showNotif(`"${product.name}" rejected and removed.`, "error");
+    } catch (e) { showNotif("Reject failed: " + e.message, "error"); }
+  };
   const openModal = (type, data = {}) => { setModal(type); setFormData({ ...data }); };
   const closeModal = () => { setModal(null); setFormData({}); setModalErrors({}); };
 
@@ -567,8 +587,79 @@ export default function AdminPortal() {
     const ownerOptions = [...new Map(products.filter(p => p.owner).map(p => [p.ownerEmail, p.owner])).entries()].map(([email, name]) => [email, name]);
     return (
       <>
+        {/* ── Pending Approval Grid ── */}
+        {pendingProducts.length > 0 && (
+          <div style={{ marginBottom: "2rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
+              <div>
+                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: COLORS.text }}>⏳ Pending Approval</h2>
+                <p style={{ color: COLORS.muted, fontSize: "0.85rem" }}>{pendingProducts.length} product{pendingProducts.length !== 1 ? "s" : ""} waiting for review</p>
+              </div>
+              <span style={{ background: "rgba(245,158,11,0.15)", color: COLORS.gold, borderRadius: "8px", padding: "0.3rem 0.8rem", fontSize: "0.8rem", fontWeight: 700 }}>{pendingProducts.length} pending</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1rem" }}>
+              {pendingProducts.map(p => (
+                <div key={p.id} style={{ background: COLORS.surface, borderRadius: "16px", border: `2px solid ${COLORS.gold}55`, overflow: "hidden", boxShadow: "0 2px 12px rgba(245,158,11,0.1)" }}>
+                  {/* Image / emoji */}
+                  <div style={{ height: "140px", background: `linear-gradient(135deg, #fff8ee, #fff3d6)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", fontSize: "3.5rem" }}>
+                    {(p.photos || p.photo_urls)?.[0]
+                      ? <img src={(p.photos || p.photo_urls)[0]?.url || (p.photos || p.photo_urls)[0]} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      : (p.image || "📦")}
+                    <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "rgba(245,158,11,0.9)", color: "#fff", borderRadius: "6px", padding: "0.2rem 0.6rem", fontSize: "0.72rem", fontWeight: 700 }}>⏳ Pending</span>
+                    {(p.photos || p.photo_urls)?.length > 1 && (
+                      <span style={{ position: "absolute", bottom: "0.5rem", left: "0.6rem", background: "rgba(0,0,0,0.55)", color: "#fff", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.7rem", fontWeight: 600 }}>📸 {(p.photos || p.photo_urls).length}</span>
+                    )}
+                  </div>
+                  <div style={{ padding: "1.1rem" }}>
+                    <div style={{ fontWeight: 700, fontSize: "0.98rem", marginBottom: "0.2rem" }}>{p.name}</div>
+                    <div style={{ color: COLORS.muted, fontSize: "0.78rem", marginBottom: "0.5rem" }}>
+                      {p.category} · {p.condition || "Good"}{p.location ? ` · ${p.location}` : ""}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                      <div>
+                        <span style={{ fontWeight: 800, fontSize: "1rem", color: COLORS.text }}>{INR(p.priceDay || p.price || 0)}</span>
+                        <span style={{ color: COLORS.muted, fontSize: "0.78rem" }}>/day</span>
+                        {p.priceMonth && <span style={{ color: COLORS.muted, fontSize: "0.72rem", marginLeft: "0.5rem" }}>· {INR(p.priceMonth)}/mo</span>}
+                      </div>
+                    </div>
+                    {p.description && (
+                      <div style={{ color: COLORS.muted, fontSize: "0.78rem", marginBottom: "0.75rem", lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{p.description}</div>
+                    )}
+                    {/* Owner info */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem", background: COLORS.bg, borderRadius: "8px", marginBottom: "0.75rem" }}>
+                      <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: COLORS.accentLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 700, color: COLORS.accent, flexShrink: 0 }}>
+                        {(p.owner || "?")[0]}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: "0.8rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.owner || "—"}</div>
+                        <div style={{ fontSize: "0.68rem", color: COLORS.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.ownerEmail || ""}</div>
+                      </div>
+                    </div>
+                    {/* Actions */}
+                    <div style={{ display: "flex", gap: "0.6rem" }}>
+                      <button
+                        style={{ flex: 1, background: "rgba(16,185,129,0.1)", color: COLORS.green, border: `1.5px solid ${COLORS.green}40`, borderRadius: "10px", padding: "0.6rem", cursor: "pointer", fontWeight: 700, fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", transition: "all 0.15s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = COLORS.green; e.currentTarget.style.color = "#fff"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; e.currentTarget.style.color = COLORS.green; }}
+                        onClick={() => approveProduct(p)}
+                      >✓ Approve</button>
+                      <button
+                        style={{ flex: 1, background: "rgba(239,68,68,0.08)", color: COLORS.red, border: `1.5px solid ${COLORS.red}40`, borderRadius: "10px", padding: "0.6rem", cursor: "pointer", fontWeight: 700, fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", transition: "all 0.15s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = COLORS.red; e.currentTarget.style.color = "#fff"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; e.currentTarget.style.color = COLORS.red; }}
+                        onClick={() => rejectProduct(p)}
+                      >✕ Reject</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Approved Products Grid ── */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-          <div><h2 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Products</h2><p style={{ color: COLORS.muted, fontSize: "0.85rem" }}>{filteredProducts.length} of {products.length} products</p></div>
+          <div><h2 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Products</h2><p style={{ color: COLORS.muted, fontSize: "0.85rem" }}>{filteredProducts.length} of {products.filter(p => p.status !== "pending_approval").length} products</p></div>
           <button style={s.btn("primary")} onClick={() => openModal("product", { price: 999, stock: 1, category: "Electronics", tags: [] })}>+ Add Product</button>
         </div>
         <div style={s.card}>
@@ -1059,6 +1150,7 @@ export default function AdminPortal() {
                 <span style={{ fontSize: "1.05rem", flexShrink: 0 }}>{item.icon}</span>
                 {sidebarOpen && <span>{item.label}</span>}
                 {sidebarOpen && item.id === "tags" && featureFlags.tagging && <span style={{ marginLeft: "auto", background: COLORS.accentLight, color: COLORS.accent, borderRadius: "4px", padding: "0.1rem 0.4rem", fontSize: "0.65rem", fontWeight: 700 }}>{tags.filter(t => t.active).length}</span>}
+                {sidebarOpen && item.id === "products" && pendingProducts.length > 0 && <span style={{ marginLeft: "auto", background: "rgba(245,158,11,0.15)", color: COLORS.gold, borderRadius: "4px", padding: "0.1rem 0.4rem", fontSize: "0.65rem", fontWeight: 700 }}>⏳ {pendingProducts.length}</span>}
                 {sidebarOpen && item.id === "settings" && <span style={{ marginLeft: "auto", background: "rgba(239,68,68,0.1)", color: COLORS.red, borderRadius: "4px", padding: "0.1rem 0.4rem", fontSize: "0.65rem", fontWeight: 700 }}>{Object.values(featureFlags).filter(v => !v).length} off</span>}
               </div>
             ))}

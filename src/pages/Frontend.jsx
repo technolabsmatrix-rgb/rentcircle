@@ -1,6 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import { fetchProducts, fetchTags, fetchFlags, fetchCustomFields, fetchPlans, fromDbProduct, subscribeTo, supabase, onAuthChange } from "../lib/supabase";
 
+// Fetch active categories from Supabase
+const fetchCategories = () =>
+  supabase.from("categories").select("*").eq("active", true).order("name")
+    .then(({ data, error }) => { if (error) throw error; return data || []; });
+
 const INR = (amount) => `₹${Number(amount).toLocaleString("en-IN")}`;
 const C = { dark: "#1a1a2e", gold: "#f59e0b", bg: "#f8f7f4", muted: "#6b7280", border: "#e5e7eb", red: "#ef4444", green: "#10b981", purple: "#7c3aed" };
 
@@ -519,9 +524,13 @@ function PhotoUploader({ photos, onChange, maxPhotos = 8, accentColor, bgColor, 
 }
 
 /* ─── Add / Edit Product Modal ─── */
-function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [] }) {
+function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], categories: dbCategories = [] }) {
   const plan = DEFAULT_PLANS.find(p => p.id === user?.subscription);
-  const [form, setForm] = useState(editProduct ? { ...editProduct } : { name: "", category: "Electronics", priceDay: "", priceMonth: "", priceYear: "", description: "", image: "📷", condition: "Excellent", location: "", tags: [] });
+  // Use DB categories (active ones), fallback to hardcoded list if DB is empty
+  const categoryList = dbCategories.length > 0
+    ? dbCategories.map(c => c.name)
+    : ["Electronics", "Sports", "Outdoor", "Gaming", "Tools", "Fashion"];
+  const [form, setForm] = useState(editProduct ? { ...editProduct } : { name: "", category: categoryList[0] || "Electronics", priceDay: "", priceMonth: "", priceYear: "", description: "", image: "📷", condition: "Excellent", location: "", tags: [] });
   const [photos, setPhotos] = useState(editProduct?.photos || []);
   const [focused, setFocused] = useState(null);
   const [step, setStep] = useState(1);
@@ -556,14 +565,23 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [] })
 
   const handleSave = () => {
     if (!validate()) { setStep(1); return; }
+    const isEdit = !!editProduct;
     onSave({
-      ...form, photos, tags: form.tags || [],
+      ...form,
+      photos,
+      tags: user?.isMaster ? (form.tags || []) : [],
       priceDay: Number(form.priceDay),
       priceMonth: form.priceMonth ? Number(form.priceMonth) : Math.round(Number(form.priceDay) * 25),
       priceYear: form.priceYear ? Number(form.priceYear) : Math.round(Number(form.priceDay) * 280),
-      id: editProduct?.id || Date.now(), rating: editProduct?.rating || 5.0,
-      reviews: editProduct?.reviews || 0, badge: editProduct?.badge || "New",
-      unit: "day", owner: user.name, ownerEmail: user.email,
+      id: editProduct?.id || Date.now(),
+      rating: editProduct?.rating || 5.0,
+      reviews: editProduct?.reviews || 0,
+      badge: editProduct?.badge || "New",
+      unit: "day",
+      owner: user.name,
+      ownerEmail: user.email,
+      // Regular users submit for approval; master & edits keep existing status
+      status: isEdit ? (editProduct.status || "active") : (user?.isMaster ? "active" : "pending_approval"),
     });
   };
 
@@ -600,7 +618,7 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [] })
                 <div>
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Category *</label>
                   <select style={{ ...inp("cat"), width: "100%" }} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} onFocus={() => setFocused("cat")} onBlur={() => setFocused(null)}>
-                    {categories.filter(c => c !== "All").map(c => <option key={c}>{c}</option>)}
+                    {categoryList.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
@@ -667,8 +685,8 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [] })
                   <input style={inp("loc")} placeholder="e.g. Mumbai" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} onFocus={() => setFocused("loc")} onBlur={() => setFocused(null)} />
                 </div>
               </div>
-              {/* Tags */}
-              {adminTags.length > 0 && (
+              {/* Tags — master user only */}
+              {user?.isMaster && adminTags.length > 0 && (
                 <div style={{ marginBottom: "1.25rem" }}>
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.6rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Product Tags <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
@@ -816,7 +834,12 @@ function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDele
                   {p.photos?.length > 0
                     ? <img src={p.photos[0].url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                     : <span style={{ fontSize: "3.5rem" }}>{p.image}</span>}
-                  <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#dcfce7", color: "#166534", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>✓ Live</span>
+                  {p.status === "pending_approval"
+                    ? <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#fef3c7", color: "#92400e", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>⏳ Pending Review</span>
+                    : p.status === "rejected"
+                    ? <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#fee2e2", color: "#991b1b", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>✕ Rejected</span>
+                    : <span style={{ position: "absolute", top: "0.75rem", right: "0.75rem", background: "#dcfce7", color: "#166534", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 700 }}>✓ Live</span>
+                  }
                   {p.photos?.length > 0 && <span style={{ position: "absolute", bottom: "0.6rem", left: "0.6rem", background: "rgba(0,0,0,0.55)", color: "#fff", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.7rem", fontWeight: 600 }}>📸 {p.photos.length}</span>}
                 </div>
                 <div style={{ padding: "1.25rem" }}>
@@ -1734,6 +1757,7 @@ export default function RentCircle() {
   // Load from Supabase (falls back to defaults if unavailable)
   const [flags, setFlags] = useState({ subscriptionPlans: true, tagging: true, smartSearch: true, phoneVerification: true, emailVerification: true, customFields: true });
   const [adminTags, setAdminTags] = useState([]);
+  const [adminCategories, setAdminCategories] = useState([]);
   const [customFields, setCustomFields] = useState([]);
   const [plans, setPlans] = useState(DEFAULT_PLANS);
 
@@ -1744,6 +1768,9 @@ export default function RentCircle() {
       .catch(() => {})
     fetchTags()
       .then(rows => setAdminTags(rows.filter(t => t.active)))
+      .catch(() => {})
+    fetchCategories()
+      .then(rows => setAdminCategories(rows))
       .catch(() => {})
     fetchFlags()
       .then(dbFlags => setFlags(f => ({ ...f, ...dbFlags })))
@@ -1818,6 +1845,11 @@ export default function RentCircle() {
           .then(rows => setAdminTags(rows.filter(t => t.active)))
           .catch(() => {})
       ),
+      subscribeTo('categories', () =>
+        fetchCategories()
+          .then(rows => setAdminCategories(rows))
+          .catch(() => {})
+      ),
       subscribeTo('feature_flags', () =>
         fetchFlags()
           .then(dbFlags => setFlags(f => ({ ...f, ...dbFlags })))
@@ -1870,6 +1902,10 @@ export default function RentCircle() {
     if (editingProduct) {
       setAllProducts(prev => prev.map(p => p.id === product.id ? product : p));
       showNotif("Product updated successfully! ✓");
+    } else if (product.status === "pending_approval") {
+      // Add to local state but it won't show in public grid (filtered out)
+      setAllProducts(prev => [...prev, product]);
+      showNotif("Product submitted for review! ⏳ Admin will approve it shortly.");
     } else {
       setAllProducts(prev => [...prev, product]);
       showNotif("Product listed successfully! 🚀");
@@ -1900,6 +1936,8 @@ export default function RentCircle() {
 
   const filteredProducts = useMemo(() => {
     let result = allProducts.filter(p => {
+      // Never show pending_approval products in the public browse grid
+      if (p.status === "pending_approval" || p.status === "rejected") return false;
       const matchCat = selectedCategory === "All" || p.category === selectedCategory;
       const matchSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase()) || (p.description || "").toLowerCase().includes(searchQuery.toLowerCase());
       const matchMin = !priceMin || (p.priceDay || p.price) >= Number(priceMin);
@@ -2441,7 +2479,7 @@ export default function RentCircle() {
         {notif && <div style={{ position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)", background: C.dark, color: "#fff", padding: "0.9rem 1.8rem", borderRadius: "50px", fontWeight: 600, zIndex: 999, boxShadow: "0 10px 30px rgba(0,0,0,0.2)", whiteSpace: "nowrap" }}>✓ {notif.msg}</div>}
         {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onLogin={handleLogin} flags={flags} customFields={flags.customFields ? customFields : []} />}
         {subGateOpen && <SubscriptionGate onClose={() => setSubGateOpen(false)} onSubscribe={handleSubscribe} user={user} />}
-        {addProductOpen && <AddProductModal onClose={() => { setAddProductOpen(false); setEditingProduct(null); }} onSave={handleSaveProduct} editProduct={editingProduct} user={user} adminTags={adminTags} />}
+        {addProductOpen && <AddProductModal onClose={() => { setAddProductOpen(false); setEditingProduct(null); }} onSave={handleSaveProduct} editProduct={editingProduct} user={user} adminTags={adminTags} categories={adminCategories} />}
 
         {/* NAV */}
         <nav style={{ background: "#fff", color: C.dark, padding: "0 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", height: "72px", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 16px rgba(0,0,0,0.08)", borderBottom: `1px solid ${C.border}`, gap: "1rem" }}>
