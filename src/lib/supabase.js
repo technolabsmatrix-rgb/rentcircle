@@ -156,6 +156,11 @@ export const deleteCustomField = (id) =>
 
 // ─── Field mapping ────────────────────────────────────────
 function toDbProduct(p) {
+  // Photos: frontend stores [{id, url, name}], DB stores text[] of URLs
+  const photoUrls = (p.photos || []).map(ph =>
+    typeof ph === "string" ? ph : ph?.url
+  ).filter(Boolean);
+
   return {
     ...(p.id && { id: p.id }),
     name:        p.name,
@@ -165,7 +170,7 @@ function toDbProduct(p) {
     price_year:  p.priceYear,
     stock:       p.stock,
     status:      p.status    || 'active',
-    badge:       p.badge     || 'Pending Review',   // ← ADDED
+    badge:       p.badge     || 'Pending Review',
     description: p.description,
     image:       p.image     || '📦',
     condition:   p.condition,
@@ -176,10 +181,18 @@ function toDbProduct(p) {
     owner_name:  p.owner     || p.ownerName,
     owner_email: p.ownerEmail,
     tag_ids:     p.tags      || p.tagIds || [],
-    photos:      p.photos    || [],
+    photos:      photoUrls,   // ← save as plain URL strings
   }
 }
+
 export function fromDbProduct(p) {
+  // Photos: DB returns text[] of URLs, convert back to {id, url} objects
+  const photos = (p.photos || []).map((ph, i) =>
+    typeof ph === "string"
+      ? { id: `db-${p.id}-${i}`, url: ph, name: `photo-${i + 1}` }
+      : ph
+  );
+
   return {
     id:          p.id,
     name:        p.name,
@@ -190,7 +203,7 @@ export function fromDbProduct(p) {
     priceYear:   p.price_year,
     stock:       p.stock,
     status:      p.status,
-    badge:       p.badge,                           // ← ADDED
+    badge:       p.badge,
     description: p.description,
     image:       p.image,
     condition:   p.condition,
@@ -202,10 +215,16 @@ export function fromDbProduct(p) {
     ownerName:   p.owner_name,
     ownerEmail:  p.owner_email,
     tags:        p.tag_ids || [],
-    photos:      p.photos  || [],
+    photos,      // ← always {id, url} objects
     createdAt:   p.created_at,
   }
 }
+
+
+
+
+
+
 // ─── Realtime subscriptions ───────────────────────────────
 // Call once on app start — callback fires whenever a table changes
 export function subscribeTo(table, callback) {
