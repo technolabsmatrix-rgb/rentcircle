@@ -98,30 +98,41 @@ function MyOrdersPage({ user, allProducts }) {
         </div>
       ):(
         <div style={{ background:"#fff",borderRadius:"20px",border:`1px solid ${C.border}`,overflow:"hidden",boxShadow:"0 2px 10px rgba(0,0,0,0.05)" }}>
-          <div style={{ display:"grid",gridTemplateColumns:"1.1fr 1.3fr 1.2fr 0.6fr 0.9fr 1.1fr 0.9fr",gap:"0.75rem",padding:"0.85rem 1.5rem",background:C.bg,borderBottom:`1px solid ${C.border}` }}>
-            {["Order ID","Product","Renter","Days","Amount","Dates","Status"].map(h=>(
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1.2fr 0.5fr 0.9fr 1fr 1.6fr 0.85fr",gap:"0.75rem",padding:"0.85rem 1.5rem",background:C.bg,borderBottom:`1px solid ${C.border}` }}>
+            {["Order ID","Product","Days","Amount","Dates","Delivery","Status"].map(h=>(
               <div key={h} style={{ fontSize:"0.72rem",fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em" }}>{h}</div>
             ))}
           </div>
           {filtered.map((o,i)=>{
             const sc=ORDER_STATUS_COLORS[o.status]||C.muted;
             return (
-              <div key={o.id} style={{ display:"grid",gridTemplateColumns:"1.1fr 1.3fr 1.2fr 0.6fr 0.9fr 1.1fr 0.9fr",gap:"0.75rem",padding:"1rem 1.5rem",alignItems:"center",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",transition:"background 0.15s" }} onMouseEnter={e=>e.currentTarget.style.background=C.bg} onMouseLeave={e=>e.currentTarget.style.background=""}>
-                <div style={{ fontFamily:"monospace",fontWeight:700,color:C.dark,fontSize:"0.82rem" }}>{o.id}</div>
-                <div style={{ fontWeight:700,fontSize:"0.88rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{o.product||"—"}</div>
-                <div>
-                  <div style={{ fontWeight:600,fontSize:"0.85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{o.user_name||"—"}</div>
-                  <div style={{ color:C.muted,fontSize:"0.72rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{o.user_email||""}</div>
+              <div key={o.id} style={{ borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none" }}>
+                {/* Main row */}
+                <div style={{ display:"grid",gridTemplateColumns:"1fr 1.2fr 0.5fr 0.9fr 1fr 1.6fr 0.85fr",gap:"0.75rem",padding:"1rem 1.5rem",alignItems:"center",transition:"background 0.15s" }} onMouseEnter={e=>e.currentTarget.style.background=C.bg} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                  <div style={{ fontFamily:"monospace",fontWeight:700,color:C.dark,fontSize:"0.82rem" }}>{o.id}</div>
+                  <div style={{ fontWeight:700,fontSize:"0.88rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{o.product||"—"}</div>
+                  <div style={{ fontWeight:600,fontSize:"0.88rem" }}>{o.days??"-"}d</div>
+                  <div style={{ fontWeight:800,color:C.green,fontSize:"0.95rem" }}>₹{Number(o.amount||0).toLocaleString("en-IN")}</div>
+                  <div>
+                    <div style={{ fontSize:"0.78rem",fontWeight:600 }}>{o.start_date||"—"}</div>
+                    <div style={{ fontSize:"0.72rem",color:C.muted }}>→ {o.end_date||"—"}</div>
+                  </div>
+                  {/* Delivery info */}
+                  <div style={{ minWidth:0 }}>
+                    {o.delivery_address ? (
+                      <>
+                        <div style={{ fontSize:"0.78rem",fontWeight:600,color:C.dark,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }} title={o.delivery_address}>📍 {o.delivery_address}</div>
+                        {o.delivery_phone && <div style={{ fontSize:"0.72rem",color:C.muted,marginTop:"0.1rem" }}>📞 {o.delivery_phone}</div>}
+                        {o.payment_method && <div style={{ fontSize:"0.68rem",color:"#7c3aed",fontWeight:700,marginTop:"0.1rem",textTransform:"uppercase" }}>💵 {o.payment_method}</div>}
+                      </>
+                    ) : (
+                      <span style={{ fontSize:"0.75rem",color:C.muted }}>—</span>
+                    )}
+                  </div>
+                  <span style={{ background:`${sc}18`,color:sc,border:`1.5px solid ${sc}40`,borderRadius:"20px",padding:"0.25rem 0.65rem",fontSize:"0.75rem",fontWeight:700,whiteSpace:"nowrap",display:"inline-block" }}>
+                    {(o.status||"").charAt(0).toUpperCase()+(o.status||"").slice(1)}
+                  </span>
                 </div>
-                <div style={{ fontWeight:600,fontSize:"0.88rem" }}>{o.days??"-"}d</div>
-                <div style={{ fontWeight:800,color:C.green,fontSize:"0.95rem" }}>₹{Number(o.amount||0).toLocaleString("en-IN")}</div>
-                <div>
-                  <div style={{ fontSize:"0.78rem",fontWeight:600 }}>{o.start_date||"—"}</div>
-                  <div style={{ fontSize:"0.72rem",color:C.muted }}>→ {o.end_date||"—"}</div>
-                </div>
-                <span style={{ background:`${sc}18`,color:sc,border:`1.5px solid ${sc}40`,borderRadius:"20px",padding:"0.25rem 0.65rem",fontSize:"0.75rem",fontWeight:700,whiteSpace:"nowrap",display:"inline-block" }}>
-                  {(o.status||"").charAt(0).toUpperCase()+(o.status||"").slice(1)}
-                </span>
               </div>
             );
           })}
@@ -3192,7 +3203,6 @@ export default function RentCircle() {
                       { key: "name",    label: "Full Name",       placeholder: "Enter your full name",        type: "text" },
                       { key: "phone",   label: "Phone Number",    placeholder: "+91 XXXXX XXXXX",             type: "tel"  },
                       { key: "address", label: "Street Address",  placeholder: "House no., Street, Area",     type: "text" },
-                      { key: "city",    label: "City",            placeholder: "City",                        type: "text" },
                       { key: "pincode", label: "PIN Code",        placeholder: "6-digit PIN code",            type: "text" },
                     ].map(f => (
                       <div key={f.key}>
@@ -3209,6 +3219,33 @@ export default function RentCircle() {
                         {addrErrors[f.key] && <div style={{ color: C.red, fontSize: "0.75rem", marginTop: "0.2rem" }}>{addrErrors[f.key]}</div>}
                       </div>
                     ))}
+                    {/* City dropdown from admin configuration */}
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: C.muted, marginBottom: "0.3rem" }}>City <span style={{ color: C.red }}>*</span></label>
+                      {availableCities.length > 0 ? (
+                        <select
+                          value={deliveryAddr.city}
+                          onChange={e => { setDeliveryAddr(p => ({ ...p, city: e.target.value })); setAddrErrors(p => ({ ...p, city: "" })); }}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "0.7rem 0.9rem", borderRadius: "10px", border: `1.5px solid ${addrErrors.city ? C.red : C.border}`, outline: "none", fontFamily: "'Outfit', sans-serif", fontSize: "0.9rem", color: deliveryAddr.city ? C.dark : C.muted, background: addrErrors.city ? "#fff5f5" : "#fff", transition: "border 0.15s", appearance: "none", cursor: "pointer" }}
+                        >
+                          <option value="">Select delivery city...</option>
+                          {availableCities.map(city => (
+                            <option key={city} value={city}>{city}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="City"
+                          value={deliveryAddr.city}
+                          onChange={e => { setDeliveryAddr(p => ({ ...p, city: e.target.value })); setAddrErrors(p => ({ ...p, city: "" })); }}
+                          style={{ width: "100%", boxSizing: "border-box", padding: "0.7rem 0.9rem", borderRadius: "10px", border: `1.5px solid ${addrErrors.city ? C.red : C.border}`, outline: "none", fontFamily: "'Outfit', sans-serif", fontSize: "0.9rem", color: C.dark, background: addrErrors.city ? "#fff5f5" : "#fff", transition: "border 0.15s" }}
+                          onFocus={e => e.target.style.borderColor = C.dark}
+                          onBlur={e => e.target.style.borderColor = addrErrors.city ? C.red : C.border}
+                        />
+                      )}
+                      {addrErrors.city && <div style={{ color: C.red, fontSize: "0.75rem", marginTop: "0.2rem" }}>{addrErrors.city}</div>}
+                    </div>
                   </div>
                 </div>
 
@@ -3249,7 +3286,6 @@ export default function RentCircle() {
                     try {
                       const today = new Date();
                       const fmt = d => d.toISOString().split("T")[0];
-                      const fullAddr = `${deliveryAddr.address}, ${deliveryAddr.city} - ${deliveryAddr.pincode}`;
                       await Promise.all(cart.map(item => {
                         const days = item.days || 1;
                         const end = new Date(today); end.setDate(end.getDate() + days);
@@ -3264,7 +3300,7 @@ export default function RentCircle() {
                           end_date:         fmt(end),
                           amount:           (item.priceDay || item.price || 0) * days,
                           status:           "active",
-                          delivery_address: fullAddr,
+                          delivery_address: `${deliveryAddr.address}, ${deliveryAddr.city} - ${deliveryAddr.pincode}`,
                           delivery_phone:   deliveryAddr.phone,
                           payment_method:   "cod",
                         });
