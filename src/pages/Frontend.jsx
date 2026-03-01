@@ -29,36 +29,35 @@ function invalidateCache() {
   try { localStorage.removeItem(RC_CACHE_KEY); } catch { }
 }
 
-/* ─── MyOrdersPage ───────────────────────────────────────────
+/* ─── Status colours shared across order UIs ─── */
+const ORDER_STATUS_COLORS = { active: "#10b981", pending: "#f59e0b", completed: "#6366f1", cancelled: "#ef4444" };
+
+/* ─── MyOrdersPage ────────────────────────────────────────────
  *  Read-only order grid for logged-in users.
  *  Shows only orders whose product is owned by this user.
  * ─────────────────────────────────────────────────────────── */
-const ORDER_STATUS_COLORS = { active: "#10b981", pending: "#f59e0b", completed: "#6366f1", cancelled: "#ef4444" };
-
 function MyOrdersPage({ user, allProducts }) {
-  const [orders, setOrders] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState("all");
+  const [orders, setOrders]           = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  // IDs of products owned by this user
-  const myProductIds = React.useMemo(
-    () => new Set(allProducts.filter(p => p.ownerEmail === user?.email).map(p => p.id)),
+  const myProductIds = useMemo(
+    () => new Set(allProducts.filter(p => p.ownerEmail === user?.email).map(p => Number(p.id))),
     [allProducts, user]
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchOrders()
       .then(data => {
-        // Filter to only orders on this user's products
-        const mine = data.filter(o => myProductIds.has(o.product_id));
+        const mine = data.filter(o => myProductIds.has(Number(o.product_id)));
         setOrders(mine);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [myProductIds]);
 
-  const filtered = React.useMemo(() => {
+  const filtered = useMemo(() => {
     let r = orders;
     if (statusFilter !== "all") r = r.filter(o => o.status === statusFilter);
     if (search.trim()) {
@@ -73,32 +72,32 @@ function MyOrdersPage({ user, allProducts }) {
     return r;
   }, [orders, statusFilter, search]);
 
-  const totalRevenue = orders.reduce((s, o) => s + (o.amount || 0), 0);
-  const activeCount  = orders.filter(o => o.status === "active").length;
+  const totalRevenue   = orders.reduce((s, o) => s + (o.amount || 0), 0);
+  const activeCount    = orders.filter(o => o.status === "active").length;
   const completedCount = orders.filter(o => o.status === "completed").length;
 
   if (loading) return (
     <div style={{ padding: "6rem 2rem", textAlign: "center" }}>
-      <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⏳</div>
-      <p style={{ color: C.muted }}>Loading your orders...</p>
+      <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>⏳</div>
+      <p style={{ color: C.muted, fontFamily: "'Outfit', sans-serif" }}>Loading your orders...</p>
     </div>
   );
 
   return (
-    <div style={{ padding: "2.5rem 2rem", maxWidth: "1200px", margin: "0 auto" }}>
+    <div style={{ padding: "2.5rem 2rem", maxWidth: "1200px", margin: "0 auto", fontFamily: "'Outfit', sans-serif" }}>
       {/* Header */}
       <div style={{ marginBottom: "2rem" }}>
-        <h1 style={{ fontWeight: 900, fontSize: "2rem", marginBottom: "0.25rem" }}>📋 My Orders</h1>
+        <h1 style={{ fontWeight: 900, fontSize: "2rem", marginBottom: "0.25rem", color: C.dark }}>📋 My Orders</h1>
         <p style={{ color: C.muted }}>Orders placed on your listed products</p>
       </div>
 
-      {/* Stats row */}
+      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
         {[
-          { label: "Total Orders", value: orders.length, color: C.dark, icon: "📦" },
-          { label: "Active",       value: activeCount,   color: "#10b981", icon: "🟢" },
-          { label: "Completed",    value: completedCount,color: "#6366f1", icon: "✅" },
-          { label: "Revenue",      value: `₹${Number(totalRevenue).toLocaleString("en-IN")}`, color: C.green, icon: "💰" },
+          { label: "Total Orders", value: orders.length,                                          icon: "📦", color: C.dark  },
+          { label: "Active",       value: activeCount,                                             icon: "🟢", color: "#10b981" },
+          { label: "Completed",    value: completedCount,                                          icon: "✅", color: "#6366f1" },
+          { label: "Revenue",      value: `₹${Number(totalRevenue).toLocaleString("en-IN")}`,     icon: "💰", color: C.green },
         ].map(s => (
           <div key={s.label} style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", border: `1px solid ${C.border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
             <div style={{ fontSize: "1.5rem", marginBottom: "0.4rem" }}>{s.icon}</div>
@@ -112,7 +111,7 @@ function MyOrdersPage({ user, allProducts }) {
       <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem", flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ flex: "1 1 220px", display: "flex", alignItems: "center", gap: "0.5rem", background: "#fff", borderRadius: "12px", padding: "0.6rem 1rem", border: `1.5px solid ${C.border}` }}>
           <span style={{ color: C.muted }}>🔍</span>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search order, product, renter..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search order ID, product, renter..."
             style={{ border: "none", outline: "none", background: "transparent", fontFamily: "'Outfit', sans-serif", fontSize: "0.9rem", color: C.dark, width: "100%" }} />
           {search && <button onClick={() => setSearch("")} style={{ border: "none", background: "none", cursor: "pointer", color: C.muted, fontSize: "0.8rem" }}>✕</button>}
         </div>
@@ -120,68 +119,57 @@ function MyOrdersPage({ user, allProducts }) {
           {["all", "active", "pending", "completed", "cancelled"].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               style={{ padding: "0.5rem 1rem", borderRadius: "20px", border: `1.5px solid ${statusFilter === s ? (ORDER_STATUS_COLORS[s] || C.dark) : C.border}`, background: statusFilter === s ? (ORDER_STATUS_COLORS[s] || C.dark) : "#fff", color: statusFilter === s ? "#fff" : C.muted, cursor: "pointer", fontWeight: 600, fontSize: "0.82rem", fontFamily: "'Outfit', sans-serif", transition: "all 0.15s" }}>
-              {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-              {s !== "all" && <span style={{ marginLeft: "0.35rem", opacity: 0.8 }}>({orders.filter(o => o.status === s).length})</span>}
+              {s === "all" ? `All (${orders.length})` : s.charAt(0).toUpperCase() + s.slice(1) + ` (${orders.filter(o => o.status === s).length})`}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Empty state */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "5rem 2rem", background: "#fff", borderRadius: "20px", border: `2px dashed ${C.border}` }}>
           <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>{orders.length === 0 ? "📭" : "🔍"}</div>
-          <h3 style={{ fontWeight: 800, marginBottom: "0.5rem" }}>{orders.length === 0 ? "No orders yet" : "No matching orders"}</h3>
+          <h3 style={{ fontWeight: 800, marginBottom: "0.5rem", color: C.dark }}>{orders.length === 0 ? "No orders yet" : "No matching orders"}</h3>
           <p style={{ color: C.muted }}>{orders.length === 0 ? "When renters place orders on your products, they'll appear here." : "Try adjusting your search or filter."}</p>
         </div>
       ) : (
         <div style={{ background: "#fff", borderRadius: "20px", border: `1px solid ${C.border}`, overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-          {/* Table header */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 0.8fr 0.8fr 0.9fr 0.9fr 0.9fr", gap: "1rem", padding: "0.85rem 1.5rem", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+          {/* Header row */}
+          <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.3fr 1.2fr 0.6fr 0.9fr 1.1fr 0.9fr", gap: "0.75rem", padding: "0.85rem 1.5rem", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
             {["Order ID", "Product", "Renter", "Days", "Amount", "Dates", "Status"].map(h => (
               <div key={h} style={{ fontSize: "0.72rem", fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
             ))}
           </div>
-          {/* Rows */}
+          {/* Data rows */}
           {filtered.map((o, i) => {
             const sc = ORDER_STATUS_COLORS[o.status] || C.muted;
             return (
-              <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1.2fr 1.4fr 0.8fr 0.8fr 0.9fr 0.9fr 0.9fr", gap: "1rem", padding: "1rem 1.5rem", alignItems: "center", borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none", transition: "background 0.15s" }}
+              <div key={o.id}
+                style={{ display: "grid", gridTemplateColumns: "1.1fr 1.3fr 1.2fr 0.6fr 0.9fr 1.1fr 0.9fr", gap: "0.75rem", padding: "1rem 1.5rem", alignItems: "center", borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none", transition: "background 0.15s" }}
                 onMouseEnter={e => e.currentTarget.style.background = C.bg}
                 onMouseLeave={e => e.currentTarget.style.background = ""}>
-                {/* Order ID */}
-                <div style={{ fontFamily: "monospace", fontWeight: 700, color: C.dark, fontSize: "0.85rem" }}>{o.id}</div>
-                {/* Product */}
-                <div style={{ overflow: "hidden" }}>
-                  <div style={{ fontWeight: 700, fontSize: "0.88rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.product || "—"}</div>
-                </div>
-                {/* Renter */}
-                <div style={{ overflow: "hidden" }}>
-                  <div style={{ fontWeight: 600, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.user_name || "—"}</div>
+                <div style={{ fontFamily: "monospace", fontWeight: 700, color: C.dark, fontSize: "0.82rem" }}>{o.id}</div>
+                <div style={{ fontWeight: 700, fontSize: "0.88rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.product || "—"}</div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: "0.85rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.user_name || "—"}</div>
                   <div style={{ color: C.muted, fontSize: "0.72rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.user_email || ""}</div>
                 </div>
-                {/* Days */}
-                <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{o.days}d</div>
-                {/* Amount */}
+                <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{o.days ?? "—"}d</div>
                 <div style={{ fontWeight: 800, color: C.green, fontSize: "0.95rem" }}>₹{Number(o.amount || 0).toLocaleString("en-IN")}</div>
-                {/* Dates */}
                 <div>
                   <div style={{ fontSize: "0.78rem", fontWeight: 600 }}>{o.start_date || "—"}</div>
                   <div style={{ fontSize: "0.72rem", color: C.muted }}>→ {o.end_date || "—"}</div>
                 </div>
-                {/* Status badge */}
-                <div>
-                  <span style={{ background: `${sc}18`, color: sc, border: `1.5px solid ${sc}40`, borderRadius: "20px", padding: "0.25rem 0.7rem", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}>
-                    {o.status?.charAt(0).toUpperCase() + (o.status?.slice(1) || "")}
-                  </span>
-                </div>
+                <span style={{ background: `${sc}18`, color: sc, border: `1.5px solid ${sc}40`, borderRadius: "20px", padding: "0.25rem 0.65rem", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap", display: "inline-block" }}>
+                  {(o.status || "").charAt(0).toUpperCase() + (o.status || "").slice(1)}
+                </span>
               </div>
             );
           })}
         </div>
       )}
       {filtered.length > 0 && (
-        <div style={{ marginTop: "1rem", color: C.muted, fontSize: "0.82rem", textAlign: "right" }}>
+        <div style={{ marginTop: "0.75rem", color: C.muted, fontSize: "0.82rem", textAlign: "right" }}>
           Showing {filtered.length} of {orders.length} order{orders.length !== 1 ? "s" : ""}
         </div>
       )}
@@ -2598,7 +2586,7 @@ export default function RentCircle() {
               ))}
             </div>
 
-            {/* Earn Banner — hidden for subscribed users and master */}
+            {/* Earn Banner — hidden for subscribed/master users */}
             {!(user?.subscription || user?.isMaster) && <div style={{ marginTop: "3rem", background: `linear-gradient(135deg, #faf5ff, #f0f9ff)`, border: "2px solid #a855f7", borderRadius: "24px", padding: "2.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1.5rem" }}>
               <div>
                 <div style={{ display: "inline-block", background: "#7c3aed", color: "#fff", borderRadius: "50px", padding: "0.3rem 0.9rem", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.75rem" }}>💡 FOR SUBSCRIBERS</div>
