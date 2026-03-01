@@ -731,16 +731,37 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [] })
 /* ─── My Listings Page ─── */
 function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDeleteProduct, onUpgrade, navigate }) {
   const myListings = allProducts.filter(p => p.ownerEmail === user?.email);
-  const plan = DEFAULT_PLANS.find(p => p.id === user?.subscription);
-  const limit = plan ? plan.listingLimit : 0;
-  const canAdd = myListings.length < limit;
+  const isMaster = user?.isMaster;
+  const plan = isMaster ? null : DEFAULT_PLANS.find(p => p.id === user?.subscription);
+  const limit = isMaster ? Infinity : (plan ? plan.listingLimit : 0);
+  const canAdd = isMaster || myListings.length < limit;
 
   return (
     <>
       <PageHero icon="🏪" title="My Listings" subtitle="Manage the products you've listed for rent on RentCircle." />
       <div style={{ padding: "3rem 2rem", maxWidth: "1100px", margin: "0 auto" }}>
         {/* Status Banner */}
-        {plan ? (
+        {isMaster ? (
+          <div style={{ background: "linear-gradient(135deg, #f5f3ff, #ede9fe)", border: "2px solid #7c3aed", borderRadius: "20px", padding: "1.5rem 2rem", marginBottom: "2rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>👑</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "1.1rem" }}>Master User — Full Access</div>
+                <div style={{ color: C.muted, fontSize: "0.88rem" }}>Unlimited listings · No subscription required</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div style={{ background: "#fff", borderRadius: "12px", padding: "0.6rem 1.2rem", border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#7c3aed" }}>{myListings.length}</div>
+                <div style={{ fontSize: "0.75rem", color: C.muted }}>Active</div>
+              </div>
+              <div style={{ background: "#fff", borderRadius: "12px", padding: "0.6rem 1.2rem", border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: "1.4rem", fontWeight: 900, color: C.green }}>{INR(myListings.reduce((s, p) => s + (p.priceDay || p.price || 0), 0))}</div>
+                <div style={{ fontSize: "0.75rem", color: C.muted }}>Total/day</div>
+              </div>
+            </div>
+          </div>
+        ) : plan ? (
           <div style={{ background: `linear-gradient(135deg, ${plan.color}, #fff)`, border: `2px solid ${plan.accent}`, borderRadius: "20px", padding: "1.5rem 2rem", marginBottom: "2rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: plan.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>⭐</div>
@@ -749,13 +770,13 @@ function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDele
                 <div style={{ color: C.muted, fontSize: "0.88rem" }}>{INR(plan.price)}/month · {myListings.length}/{limit >= 999 ? "∞" : limit} products listed</div>
               </div>
             </div>
-            <div style={{ display: "flex", align: "center", gap: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <div style={{ background: "#fff", borderRadius: "12px", padding: "0.6rem 1.2rem", border: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: "1.4rem", fontWeight: 900, color: plan.accent }}>{myListings.length}</div>
                 <div style={{ fontSize: "0.75rem", color: C.muted }}>Active</div>
               </div>
               <div style={{ background: "#fff", borderRadius: "12px", padding: "0.6rem 1.2rem", border: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: "1.4rem", fontWeight: 900, color: C.green }}>{INR(myListings.reduce((s, p) => s + p.price, 0))}</div>
+                <div style={{ fontSize: "1.4rem", fontWeight: 900, color: C.green }}>{INR(myListings.reduce((s, p) => s + (p.priceDay || p.price || 0), 0))}</div>
                 <div style={{ fontSize: "0.75rem", color: C.muted }}>Total/day</div>
               </div>
             </div>
@@ -770,9 +791,9 @@ function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDele
         )}
 
         {/* Add Product Button */}
-        {plan && (
+        {(isMaster || plan) && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-            <h2 style={{ fontWeight: 800, fontSize: "1.4rem" }}>Your Products <span style={{ color: C.muted, fontSize: "1rem", fontWeight: 400 }}>({myListings.length}{limit < 999 ? `/${limit}` : ""})</span></h2>
+            <h2 style={{ fontWeight: 800, fontSize: "1.4rem" }}>Your Products <span style={{ color: C.muted, fontSize: "1rem", fontWeight: 400 }}>({myListings.length}{!isMaster && limit < 999 ? `/${limit}` : ""})</span></h2>
             <button onClick={canAdd ? onAddProduct : null} style={{ background: canAdd ? C.green : "#e5e7eb", color: canAdd ? "#fff" : C.muted, border: "none", borderRadius: "12px", padding: "0.75rem 1.5rem", cursor: canAdd ? "pointer" : "not-allowed", fontWeight: 700, fontFamily: "'Outfit', sans-serif", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               {canAdd ? "➕ Add New Product" : `Limit reached (${limit})`}
             </button>
@@ -780,7 +801,7 @@ function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDele
         )}
 
         {/* Product Grid */}
-        {myListings.length === 0 && plan ? (
+        {myListings.length === 0 && (isMaster || plan) ? (
           <div style={{ textAlign: "center", padding: "4rem", background: "#fff", borderRadius: "20px", border: `2px dashed ${C.border}` }}>
             <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>📦</div>
             <h3 style={{ fontWeight: 800, marginBottom: "0.5rem" }}>No listings yet</h3>
@@ -815,8 +836,8 @@ function MyListingsPage({ user, allProducts, onAddProduct, onEditProduct, onDele
           </div>
         )}
 
-        {/* Upgrade CTA if near limit */}
-        {plan && plan.id !== "business" && myListings.length >= limit * 0.8 && (
+        {/* Upgrade CTA if near limit — hidden for master */}
+        {!isMaster && plan && plan.id !== "business" && myListings.length >= limit * 0.8 && (
           <div style={{ marginTop: "2rem", background: "linear-gradient(135deg, #faf5ff, #f5f3ff)", border: "2px solid #a855f7", borderRadius: "20px", padding: "1.75rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: "1.05rem", marginBottom: "0.25rem" }}>⚡ You're nearing your listing limit!</div>
