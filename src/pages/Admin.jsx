@@ -544,14 +544,17 @@ export default function AdminPortal() {
         <div style={s.card}>
           <div style={{ padding: "1.25rem 1.5rem 0", fontWeight: 700, fontSize: "0.95rem" }}>Recent Orders</div>
           <div style={s.th("2fr 1fr 1fr 1fr")}><span>Product</span><span>User</span><span>Amount</span><span>Status</span></div>
-          {filteredOrders.slice(0, 5).map((o, i) => (
-            <div key={i} style={s.tr("2fr 1fr 1fr 1fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
-              <span style={{ fontWeight: 600, fontSize: "0.88rem" }}>{o.product}</span>
-              <span style={{ color: COLORS.muted, fontSize: "0.82rem" }}>{o.user.split(" ")[0]}</span>
-              <span style={{ color: COLORS.green, fontWeight: 700, fontSize: "0.88rem" }}>{INR(o.amount)}</span>
-              <span style={s.badge(o.status)}>{o.status}</span>
-            </div>
-          ))}
+          {filteredOrders.slice(0, 5).map((o, i) => {
+            const _name = o.user_name || o.user || "";
+            return (
+              <div key={i} style={s.tr("2fr 1fr 1fr 1fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
+                <span style={{ fontWeight: 600, fontSize: "0.88rem" }}>{o.product}</span>
+                <span style={{ color: COLORS.muted, fontSize: "0.82rem" }}>{_name.split(" ")[0] || "—"}</span>
+                <span style={{ color: COLORS.green, fontWeight: 700, fontSize: "0.88rem" }}>{INR(o.amount)}</span>
+                <span style={s.badge(o.status)}>{o.status}</span>
+              </div>
+            );
+          })}
         </div>
         <div style={s.card}>
           <div style={{ padding: "1.25rem 1.5rem", fontWeight: 700, borderBottom: `1px solid ${COLORS.border}`, fontSize: "0.95rem" }}>Plan Distribution</div>
