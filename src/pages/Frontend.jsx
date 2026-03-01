@@ -835,6 +835,17 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
                     <input style={inp("location")} placeholder="e.g. Mumbai" value={form.location} onChange={e => { setForm(f => ({ ...f, location: e.target.value })); setErrors(ev => ({ ...ev, location: "" })); }} onFocus={() => setFocused("location")} onBlur={() => setFocused(null)} />
                   )}
                   <ErrMsg field="location" />
+                  {availableCities.length > 0 && (
+                    <a
+                      href="https://wa.me/919169168009?text=Hi%2C%20I%20want%20to%20list%20a%20product%20but%20my%20city%20is%20not%20in%20the%20list.%20Can%20you%20please%20add%20it%3F"
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.4rem", fontSize: "0.75rem", color: "#25D366", fontWeight: 600, textDecoration: "none", lineHeight: 1.4 }}
+                    >
+                      <span style={{ fontSize: "0.95rem" }}>💬</span>
+                      City not listed? WhatsApp us to get it added
+                    </a>
+                  )}
                 </div>
               </div>
               {/* Tags — master user only */}
