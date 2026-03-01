@@ -666,7 +666,7 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
   const categoryList = dbCategories.length > 0
     ? dbCategories.map(c => c.name)
     : ["Electronics", "Sports", "Outdoor", "Gaming", "Tools", "Fashion"];
-  const [form, setForm] = useState(editProduct ? { ...editProduct } : { name: "", category: categoryList[0] || "Electronics", priceDay: "", priceMonth: "", priceYear: "", description: "", image: "📷", condition: "Excellent", location: "", tags: [], minRentUnit: "day", minRentValue: 1 });
+  const [form, setForm] = useState(editProduct ? { ...editProduct } : { name: "", category: categoryList[0] || "Electronics", priceDay: "", priceMonth: "", priceYear: "", description: "", image: "📷", condition: "Excellent", location: "", tags: [] });
   const [photos, setPhotos] = useState(editProduct?.photos || []);
   const [focused, setFocused] = useState(null);
   const [step, setStep] = useState(1);
@@ -730,8 +730,6 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
       priceDay: Number(form.priceDay),
       priceMonth: form.priceMonth ? Number(form.priceMonth) : Math.round(Number(form.priceDay) * 25),
       priceYear: form.priceYear ? Number(form.priceYear) : Math.round(Number(form.priceDay) * 280),
-      minRentUnit: form.minRentUnit || "day",
-      minRentValue: form.minRentValue || 1,
       id: editProduct?.id || Date.now(),
       rating: editProduct?.rating || 5.0,
       reviews: editProduct?.reviews || 0,
@@ -740,6 +738,8 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
       ownerEmail: user.email,
       status: isEdit ? (editProduct.status || "active") : "active",
       badge: isEdit ? (editProduct.badge || "New") : "Pending Review",
+      minDuration: form.minDuration ? Number(form.minDuration) : null,
+      minDurationType: form.minDurationType || "days",
     });
   };
 
@@ -799,36 +799,6 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
                     <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Price / Year (₹)</label>
                     <input style={{ ...inp("priceYear"), marginBottom: 0 }} type="number" placeholder={form.priceDay ? `Auto: ${INR(Math.round(Number(form.priceDay)*280))}` : "e.g. 360000"} value={form.priceYear} onChange={e => setForm(f => ({ ...f, priceYear: e.target.value }))} onFocus={() => setFocused("priceYear")} onBlur={() => setFocused(null)} />
                   </div>
-                </div>
-              </div>
-              {/* Minimum Rental Period */}
-              <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "14px", padding: "1rem 1.25rem", marginBottom: "1rem" }}>
-                <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.75rem" }}>⏱ Minimum Rental Period</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", alignItems: "end" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Minimum Value</label>
-                    <input
-                      type="number" min="1"
-                      style={{ ...inp("minRentValue"), marginBottom: 0 }}
-                      value={form.minRentValue || 1}
-                      onChange={e => setForm(f => ({ ...f, minRentValue: Math.max(1, parseInt(e.target.value) || 1) }))}
-                      onFocus={() => setFocused("minRentValue")} onBlur={() => setFocused(null)}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Unit</label>
-                    <div style={{ display: "flex", background: "#fff", border: `1.5px solid ${C.border}`, borderRadius: "12px", overflow: "hidden" }}>
-                      {[["day","Days"],["month","Months"],["year","Years"]].map(([k, label]) => (
-                        <button key={k} type="button" onClick={() => setForm(f => ({ ...f, minRentUnit: k }))}
-                          style={{ flex: 1, border: "none", padding: "0.7rem 0.25rem", background: form.minRentUnit === k ? C.dark : "transparent", color: form.minRentUnit === k ? "#fff" : C.muted, cursor: "pointer", fontWeight: form.minRentUnit === k ? 700 : 500, fontSize: "0.78rem", fontFamily: "'Outfit', sans-serif", transition: "all 0.15s" }}>
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ marginTop: "0.65rem", fontSize: "0.75rem", color: "#92400e", opacity: 0.8 }}>
-                  Renters must rent at least <strong>{form.minRentValue || 1} {form.minRentUnit === "day" ? (form.minRentValue > 1 ? "days" : "day") : form.minRentUnit === "month" ? (form.minRentValue > 1 ? "months" : "month") : (form.minRentValue > 1 ? "years" : "year")}</strong>
                 </div>
               </div>
               <div style={{ marginBottom: "1.5rem" }}>
@@ -891,6 +861,40 @@ function AddProductModal({ onClose, onSave, editProduct, user, adminTags = [], c
                     </a>
                   )}
                 </div>
+              </div>
+
+              {/* Minimum Rental Duration */}
+              <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "12px", padding: "0.9rem 1rem", marginBottom: "1.25rem" }}>
+                <div style={{ fontSize: "0.73rem", fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.6rem" }}>⏱ Minimum Rental Duration <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.3rem" }}>Minimum Value</label>
+                    <input
+                      style={{ ...inp("minDuration"), marginBottom: 0 }}
+                      type="number" min="1" placeholder="e.g. 3"
+                      value={form.minDuration || ""}
+                      onChange={e => setForm(f => ({ ...f, minDuration: e.target.value ? +e.target.value : null }))}
+                      onFocus={() => setFocused("minDuration")} onBlur={() => setFocused(null)}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: C.muted, marginBottom: "0.3rem" }}>Unit</label>
+                    <select
+                      style={{ width: "100%", borderRadius: "12px", padding: "0.8rem 1rem", outline: "none", fontSize: "0.9rem", fontFamily: "'Outfit', sans-serif", boxSizing: "border-box", color: C.dark, border: `1.5px solid ${C.border}`, background: "#fff" }}
+                      value={form.minDurationType || "days"}
+                      onChange={e => setForm(f => ({ ...f, minDurationType: e.target.value }))}
+                    >
+                      <option value="days">Days</option>
+                      <option value="months">Months</option>
+                      <option value="years">Years</option>
+                    </select>
+                  </div>
+                </div>
+                {form.minDuration > 0 && (
+                  <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#1d4ed8", fontWeight: 600 }}>
+                    📋 Renters must book at least {form.minDuration} {form.minDurationType}
+                  </div>
+                )}
               </div>
               {/* Tags — master user only */}
               {user?.isMaster && adminTags.length > 0 && (
@@ -2040,13 +2044,10 @@ export default function RentCircle() {
       }
     };
 
-    if (!_cached || _cached.stale) {
-      fetchProducts()
-        .then(rows => { setAllProducts(rows); writeCache(rows); syncCities(rows); })
-        .catch(() => {})
-    } else {
-      syncCities(_cached.data || []);
-    }
+    // Always fetch fresh from DB; cache is used only as instant initial render
+    fetchProducts()
+      .then(rows => { setAllProducts(rows); writeCache(rows); syncCities(rows); })
+      .catch(() => { if (_cached) syncCities(_cached.data || []); });
     fetchTags()
       .then(rows => setAdminTags(rows.filter(t => t.active)))
       .catch(() => {})
@@ -2213,6 +2214,8 @@ export default function RentCircle() {
         ownerEmail: product.ownerEmail,
         status: "active",
         badge: "Pending Review",
+        minDuration: product.minDuration || null,
+        minDurationType: product.minDurationType || "days",
       };
 
       if (editingProduct) {
@@ -2525,7 +2528,7 @@ export default function RentCircle() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "1.25rem", justifyContent: "center" }}>
                   {featuredProducts.map((p, idx) => (
                     <div key={p.id}
-                      onClick={() => { const minUnit = p.minRentUnit || "day"; const minVal = p.minRentValue || 1; setSelectedProduct(p); setRentPeriod(minUnit); setRentDays(minVal); setRentStartDate(""); setRentEndDate(""); }}
+                      onClick={() => { const initPeriod = p.minDurationType === "months" ? "month" : p.minDurationType === "years" ? "year" : "day"; const initDays = p.minDuration || 1; setSelectedProduct(p); setRentPeriod(initPeriod); setRentDays(initDays); setRentStartDate(""); setRentEndDate(""); }}
                       style={{ background: "rgba(255,255,255,0.06)", borderRadius: "20px", border: "1.5px solid rgba(255,255,255,0.1)", padding: "1.5rem", cursor: "pointer", transition: "all 0.25s", backdropFilter: "blur(8px)", position: "relative", overflow: "hidden", width: "280px", flexShrink: 0 }}
                       onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.11)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.5)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = ""; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}>
@@ -2705,7 +2708,7 @@ export default function RentCircle() {
                     <div style={{ color: "#9ca3af", fontSize: "0.8rem", marginBottom: "0.75rem" }}>{p.category} · ⭐ {p.rating} ({p.reviews}){p.location ? ` · 📍${p.location}` : ""}</div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <PriceDisplay p={p} />
-                      <button onClick={() => { const minUnit = p.minRentUnit || "day"; const minVal = p.minRentValue || 1; setSelectedProduct(p); setRentPeriod(minUnit); setRentDays(minVal); setRentStartDate(""); setRentEndDate(""); }} style={{ background: C.dark, color: "#fff", border: "none", borderRadius: "10px", padding: "0.5rem 1.2rem", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem", fontFamily: "'Outfit', sans-serif" }}>Rent Now</button>
+                      <button onClick={() => { const initPeriod = p.minDurationType === "months" ? "month" : p.minDurationType === "years" ? "year" : "day"; const initDays = p.minDuration || 1; setSelectedProduct(p); setRentPeriod(initPeriod); setRentDays(initDays); setRentStartDate(""); setRentEndDate(""); }} style={{ background: C.dark, color: "#fff", border: "none", borderRadius: "10px", padding: "0.5rem 1.2rem", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem", fontFamily: "'Outfit', sans-serif" }}>Rent Now</button>
                     </div>
                   </div>
                 </div>
@@ -2928,16 +2931,9 @@ export default function RentCircle() {
         {/* RENT MODAL */}
         {selectedProduct && (() => {
           const photos = selectedProduct.photos || [];
-          const minUnit = selectedProduct.minRentUnit || "day";
-          const minVal = selectedProduct.minRentValue || 1;
-          // Period rank: day < month < year — enforce that user can't select a period below the minimum
-          const periodRank = { day: 0, month: 1, year: 2 };
-          const minRank = periodRank[minUnit];
           const unitPrice = rentPeriod === "day" ? selectedProduct.priceDay : rentPeriod === "month" ? selectedProduct.priceMonth : selectedProduct.priceYear;
           const totalPrice = unitPrice * rentDays;
           const today = new Date().toISOString().split("T")[0];
-          // Effective minimum for current period
-          const effectiveMin = rentPeriod === minUnit ? minVal : 1;
 
           const handleStartDate = (val) => {
             setRentStartDate(val);
@@ -2951,11 +2947,11 @@ export default function RentCircle() {
           };
 
           const handleEndDate = (val) => {
-            setRentEndDate(val);
             if (!val || !rentStartDate) return;
             const start = new Date(rentStartDate);
             const end = new Date(val);
             if (end <= start) return;
+            const minVal = selectedProduct?.minDuration || 1;
             let diff = 1;
             if (rentPeriod === "day") {
               diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
@@ -2964,10 +2960,25 @@ export default function RentCircle() {
             } else {
               diff = Math.max(1, end.getFullYear() - start.getFullYear());
             }
-            setRentDays(Math.max(effectiveMin, diff));
+            if (diff < minVal) {
+              // Enforce minimum: recalculate end date from start + minVal
+              const correctedEnd = new Date(start);
+              if (rentPeriod === "day") correctedEnd.setDate(correctedEnd.getDate() + minVal - 1);
+              else if (rentPeriod === "month") correctedEnd.setMonth(correctedEnd.getMonth() + minVal);
+              else correctedEnd.setFullYear(correctedEnd.getFullYear() + minVal);
+              setRentEndDate(correctedEnd.toISOString().split("T")[0]);
+              setRentDays(minVal);
+            } else {
+              setRentEndDate(val);
+              setRentDays(diff);
+            }
           };
 
           const handleDurationChange = (newDays) => {
+            const minVal = selectedProduct?.minDuration || 1;
+            const minType = selectedProduct?.minDurationType;
+            const minPeriod = minType === "months" ? "month" : minType === "years" ? "year" : "day";
+            const effectiveMin = rentPeriod === minPeriod ? minVal : 1;
             const d = Math.max(effectiveMin, newDays);
             setRentDays(d);
             if (rentStartDate) {
@@ -2981,11 +2992,12 @@ export default function RentCircle() {
           };
 
           const handlePeriodChange = (p) => {
-            // Don't allow selecting a period below the minimum
-            if (periodRank[p] < minRank) return;
             setRentPeriod(p);
-            // Set minimum value if switching to the minimum unit
-            setRentDays(p === minUnit ? minVal : 1);
+            const minVal = selectedProduct?.minDuration || 1;
+            const minType = selectedProduct?.minDurationType; // "days"|"months"|"years"
+            const minPeriod = minType === "months" ? "month" : minType === "years" ? "year" : "day";
+            // When on the same period as the minimum, enforce minVal; otherwise start at 1
+            setRentDays(p === minPeriod ? minVal : 1);
             setRentStartDate("");
             setRentEndDate("");
           };
@@ -3003,33 +3015,43 @@ export default function RentCircle() {
                   <div style={{ color: "#9ca3af", fontSize: "0.85rem", marginBottom: "1.25rem" }}>⭐ {selectedProduct.rating} · {selectedProduct.reviews} reviews{selectedProduct.condition ? ` · ${selectedProduct.condition}` : ""}{selectedProduct.location ? ` · 📍${selectedProduct.location}` : ""}</div>
 
                   {/* Period selector tabs */}
-                  <div style={{ display: "flex", background: "#f3f4f6", borderRadius: "12px", padding: "4px", marginBottom: "1.25rem", gap: "4px" }}>
-                    {[["day","Per Day"],["month","Per Month"],["year","Per Year"]].map(([k, label]) => {
-                      const disabled = periodRank[k] < minRank;
-                      return (
-                        <button key={k} onClick={() => handlePeriodChange(k)} disabled={disabled} style={{ flex: 1, border: "none", borderRadius: "10px", padding: "0.55rem", background: rentPeriod === k ? "#fff" : "transparent", color: disabled ? "#d1d5db" : rentPeriod === k ? C.dark : C.muted, cursor: disabled ? "not-allowed" : "pointer", fontWeight: rentPeriod === k ? 700 : 500, fontSize: "0.82rem", fontFamily: "'Outfit', sans-serif", boxShadow: rentPeriod === k ? "0 1px 4px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s", position: "relative" }}>
-                          {label}
-                          {disabled && <span style={{ display: "block", fontSize: "0.58rem", color: "#d1d5db", fontWeight: 400 }}>N/A</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {(() => {
+                    const minType = selectedProduct?.minDurationType;
+                    const minVal = selectedProduct?.minDuration;
+                    const periodOrder = ["day", "month", "year"];
+                    const minPeriodIdx = minType === "months" ? 1 : minType === "years" ? 2 : 0;
+                    return (
+                      <>
+                        <div style={{ display: "flex", background: "#f3f4f6", borderRadius: "12px", padding: "4px", marginBottom: minVal > 0 ? "0.5rem" : "1.25rem", gap: "4px" }}>
+                          {[["day","Per Day"],["month","Per Month"],["year","Per Year"]].map(([k, label], idx) => {
+                            const isDisabled = idx < minPeriodIdx;
+                            return (
+                              <button key={k} onClick={() => !isDisabled && handlePeriodChange(k)}
+                                style={{ flex: 1, border: "none", borderRadius: "10px", padding: "0.55rem", background: rentPeriod === k ? "#fff" : "transparent", color: isDisabled ? "#d1d5db" : rentPeriod === k ? C.dark : C.muted, cursor: isDisabled ? "not-allowed" : "pointer", fontWeight: rentPeriod === k ? 700 : 500, fontSize: "0.82rem", fontFamily: "'Outfit', sans-serif", boxShadow: rentPeriod === k ? "0 1px 4px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s", textDecoration: isDisabled ? "line-through" : "none" }}>
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {minVal > 0 && (
+                          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "0.4rem 0.75rem", marginBottom: "1.25rem", fontSize: "0.75rem", color: "#1d4ed8", fontWeight: 600 }}>
+                            ⏱ Minimum rental: {minVal} {minType}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Duration stepper */}
                   <div style={{ background: C.bg, borderRadius: "14px", padding: "1.25rem", marginBottom: "1.25rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
                       <span style={{ fontWeight: 700, fontSize: "0.92rem" }}>Duration</span>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <button onClick={() => handleDurationChange(rentDays - 1)} disabled={rentDays <= effectiveMin} style={{ width: "32px", height: "32px", borderRadius: "50%", border: `2px solid ${rentDays <= effectiveMin ? "#e5e7eb" : C.border}`, background: rentDays <= effectiveMin ? "#f9fafb" : "#fff", cursor: rentDays <= effectiveMin ? "not-allowed" : "pointer", fontWeight: 800, fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", color: rentDays <= effectiveMin ? "#d1d5db" : C.dark }}>−</button>
+                        {(() => { const minVal = selectedProduct?.minDuration || 1; const minType = selectedProduct?.minDurationType; const minPeriod = minType === "months" ? "month" : minType === "years" ? "year" : "day"; const effectiveMin = rentPeriod === minPeriod ? minVal : 1; const atMin = rentDays <= effectiveMin; return <button onClick={() => handleDurationChange(rentDays - 1)} disabled={atMin} style={{ width: "32px", height: "32px", borderRadius: "50%", border: `2px solid ${atMin ? "#e5e7eb" : C.border}`, background: atMin ? "#f9fafb" : "#fff", cursor: atMin ? "not-allowed" : "pointer", fontWeight: 800, fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", color: atMin ? "#d1d5db" : "inherit", transition: "all 0.15s" }}>−</button>; })()}
                         <span style={{ fontWeight: 800, fontSize: "1.1rem", minWidth: "80px", textAlign: "center" }}>{durationLabel}</span>
                         <button onClick={() => handleDurationChange(rentDays + 1)} style={{ width: "32px", height: "32px", borderRadius: "50%", border: `2px solid ${C.border}`, background: "#fff", cursor: "pointer", fontWeight: 800, fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                       </div>
                     </div>
-                    {effectiveMin > 1 && (
-                      <div style={{ marginTop: "-0.5rem", marginBottom: "0.75rem", fontSize: "0.75rem", color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", padding: "0.4rem 0.75rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        ⏱ Minimum rental: <strong>{minVal} {minUnit === "day" ? (minVal > 1 ? "days" : "day") : minUnit === "month" ? (minVal > 1 ? "months" : "month") : (minVal > 1 ? "years" : "year")}</strong>
-                      </div>
-                    )}
 
                     {/* Date range */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
