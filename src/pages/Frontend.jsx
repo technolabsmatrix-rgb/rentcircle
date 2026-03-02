@@ -143,6 +143,140 @@ function MyOrdersPage({ user, allProducts }) {
   );
 }
 
+/* ─── My Rentals Page ─── */
+function MyRentalsPage({ user }) {
+  const [orders, setOrders]             = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [search, setSearch]             = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    fetchOrders()
+      .then(data => setOrders(data.filter(o =>
+        (o.user_email || o.userEmail || "").toLowerCase() === (user?.email || "").toLowerCase()
+      )))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  const filtered = useMemo(() => {
+    let r = orders;
+    if (statusFilter !== "all") r = r.filter(o => o.status === statusFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      r = r.filter(o =>
+        (o.product||"").toLowerCase().includes(q) ||
+        (o.id||"").toLowerCase().includes(q)
+      );
+    }
+    return r;
+  }, [orders, statusFilter, search]);
+
+  const activeCount    = orders.filter(o => o.status === "active").length;
+  const completedCount = orders.filter(o => o.status === "completed").length;
+  const totalSpent     = orders.reduce((s, o) => s + (o.amount || 0), 0);
+
+  if (loading) return (
+    <div style={{ padding:"6rem 2rem",textAlign:"center",fontFamily:"'Outfit',sans-serif" }}>
+      <div style={{ fontSize:"2.5rem",marginBottom:"1rem" }}>⏳</div>
+      <p style={{ color:C.muted }}>Loading your rentals...</p>
+    </div>
+  );
+
+  return (
+    <div style={{ padding:"2.5rem 2rem",maxWidth:"1200px",margin:"0 auto",fontFamily:"'Outfit',sans-serif" }}>
+      <div style={{ marginBottom:"2rem" }}>
+        <h1 style={{ fontWeight:900,fontSize:"2rem",marginBottom:"0.25rem",color:C.dark }}>📦 My Rentals</h1>
+        <p style={{ color:C.muted }}>Products you have rented on RentCircle</p>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:"1rem",marginBottom:"2rem" }}>
+        {[
+          { label:"Total Rentals", value:orders.length,   icon:"📦", color:C.dark  },
+          { label:"Active",        value:activeCount,      icon:"🟢", color:"#10b981" },
+          { label:"Completed",     value:completedCount,   icon:"✅", color:"#6366f1" },
+          { label:"Total Spent",   value:`₹${Number(totalSpent).toLocaleString("en-IN")}`, icon:"💸", color:"#ef4444" },
+        ].map(s => (
+          <div key={s.label} style={{ background:"#fff",borderRadius:"16px",padding:"1.25rem 1.5rem",border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
+            <div style={{ fontSize:"1.5rem",marginBottom:"0.4rem" }}>{s.icon}</div>
+            <div style={{ fontSize:"1.5rem",fontWeight:900,color:s.color }}>{s.value}</div>
+            <div style={{ fontSize:"0.78rem",color:C.muted,fontWeight:600,marginTop:"0.2rem" }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Search + Filter */}
+      <div style={{ display:"flex",gap:"0.75rem",marginBottom:"1.5rem",flexWrap:"wrap",alignItems:"center" }}>
+        <div style={{ flex:"1 1 220px",display:"flex",alignItems:"center",gap:"0.5rem",background:"#fff",borderRadius:"12px",padding:"0.6rem 1rem",border:`1.5px solid ${C.border}` }}>
+          <span style={{ color:C.muted }}>🔍</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search product or order ID..." style={{ border:"none",outline:"none",background:"transparent",fontFamily:"'Outfit',sans-serif",fontSize:"0.9rem",color:C.dark,width:"100%" }} />
+          {search && <button onClick={()=>setSearch("")} style={{ border:"none",background:"none",cursor:"pointer",color:C.muted,fontSize:"0.8rem" }}>✕</button>}
+        </div>
+        <div style={{ display:"flex",gap:"0.5rem",flexWrap:"wrap" }}>
+          {["all","active","pending","completed","cancelled"].map(s=>(
+            <button key={s} onClick={()=>setStatusFilter(s)} style={{ padding:"0.5rem 1rem",borderRadius:"20px",border:`1.5px solid ${statusFilter===s?(ORDER_STATUS_COLORS[s]||C.dark):C.border}`,background:statusFilter===s?(ORDER_STATUS_COLORS[s]||C.dark):"#fff",color:statusFilter===s?"#fff":C.muted,cursor:"pointer",fontWeight:600,fontSize:"0.82rem",fontFamily:"'Outfit',sans-serif",transition:"all 0.15s" }}>
+              {s==="all" ? `All (${orders.length})` : s.charAt(0).toUpperCase()+s.slice(1)+` (${orders.filter(o=>o.status===s).length})`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* List */}
+      {filtered.length === 0 ? (
+        <div style={{ textAlign:"center",padding:"5rem 2rem",background:"#fff",borderRadius:"20px",border:`2px dashed ${C.border}` }}>
+          <div style={{ fontSize:"3.5rem",marginBottom:"1rem" }}>{orders.length===0?"📭":"🔍"}</div>
+          <h3 style={{ fontWeight:800,marginBottom:"0.5rem",color:C.dark }}>{orders.length===0?"No rentals yet":"No matching rentals"}</h3>
+          <p style={{ color:C.muted }}>{orders.length===0?"Products you rent will appear here.":"Try adjusting your search or filter."}</p>
+        </div>
+      ) : (
+        <div style={{ display:"flex",flexDirection:"column",gap:"1rem" }}>
+          {filtered.map(o => {
+            const sc = ORDER_STATUS_COLORS[o.status] || C.muted;
+            return (
+              <div key={o.id} style={{ background:"#fff",borderRadius:"16px",border:`1px solid ${C.border}`,padding:"1.25rem 1.5rem",boxShadow:"0 2px 8px rgba(0,0,0,0.04)",display:"flex",flexWrap:"wrap",gap:"1.5rem",alignItems:"center" }}>
+                {/* Product info */}
+                <div style={{ flex:"1 1 180px" }}>
+                  <div style={{ fontWeight:800,fontSize:"1rem",color:C.dark,marginBottom:"0.2rem" }}>{o.product || "—"}</div>
+                  <div style={{ fontSize:"0.78rem",color:C.muted,fontFamily:"monospace" }}>{o.id}</div>
+                </div>
+                {/* Dates */}
+                <div style={{ flex:"1 1 130px" }}>
+                  <div style={{ fontSize:"0.78rem",color:C.muted,fontWeight:600,marginBottom:"0.15rem" }}>RENTAL PERIOD</div>
+                  <div style={{ fontSize:"0.88rem",fontWeight:700 }}>{o.start_date||"—"}</div>
+                  <div style={{ fontSize:"0.78rem",color:C.muted }}>→ {o.end_date||"—"}</div>
+                  {o.days && <div style={{ fontSize:"0.75rem",color:C.muted }}>{o.days} day{o.days!==1?"s":""}</div>}
+                </div>
+                {/* Delivery */}
+                {o.delivery_address && (
+                  <div style={{ flex:"1 1 160px" }}>
+                    <div style={{ fontSize:"0.78rem",color:C.muted,fontWeight:600,marginBottom:"0.15rem" }}>DELIVERY</div>
+                    <div style={{ fontSize:"0.82rem",fontWeight:600,color:C.dark }}>📍 {o.delivery_address}</div>
+                    {o.delivery_phone && <div style={{ fontSize:"0.75rem",color:C.muted }}>📞 {o.delivery_phone}</div>}
+                    {o.payment_method && <div style={{ fontSize:"0.72rem",color:"#7c3aed",fontWeight:700,textTransform:"uppercase" }}>💵 {o.payment_method}</div>}
+                  </div>
+                )}
+                {/* Amount + Status */}
+                <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"0.5rem",flexShrink:0 }}>
+                  <div style={{ fontWeight:900,fontSize:"1.2rem",color:C.dark }}>₹{Number(o.amount||0).toLocaleString("en-IN")}</div>
+                  <span style={{ background:`${sc}18`,color:sc,border:`1.5px solid ${sc}40`,borderRadius:"20px",padding:"0.25rem 0.75rem",fontSize:"0.78rem",fontWeight:700,whiteSpace:"nowrap" }}>
+                    {(o.status||"").charAt(0).toUpperCase()+(o.status||"").slice(1)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {filtered.length > 0 && (
+        <div style={{ marginTop:"0.75rem",color:C.muted,fontSize:"0.82rem",textAlign:"right" }}>
+          Showing {filtered.length} of {orders.length} rental{orders.length!==1?"s":""}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Master User ─── */
 const MASTER_USER = {
   email: "master@rentcircle.in",
@@ -2413,6 +2547,10 @@ export default function RentCircle() {
       if (!user) { navigate("home"); return null; }
       return <ProfilePage user={user} onUpdate={(u) => { setUser(u); showNotif("Profile updated! ✓"); }} onUpgrade={() => setSubGateOpen(true)} currentPlan={currentPlan} navigate={navigate} availableCities={availableCities} />;
     }
+    if (activeTab === "my-rentals") {
+      if (!user) { navigate("home"); return null; }
+      return <MyRentalsPage user={user} />;
+    }
     if (activeTab === "my-orders") {
       if (!user) { navigate("home"); return null; }
       return <MyOrdersPage user={user} allProducts={allProducts} />;
@@ -2954,7 +3092,7 @@ export default function RentCircle() {
                           : <div style={{ marginTop: "0.3rem", background: "#faf5ff", color: "#7c3aed", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700, display: "inline-block", cursor: "pointer" }} onClick={() => { setUserMenuOpen(false); setSubGateOpen(true); }}>🔒 No Plan — Subscribe</div>
                       }
                     </div>
-                    {[["My Rentals","home"],["My Orders","my-orders"],["My Listings","my-listings"],["Profile","profile"],["Settings","profile"]].filter(([label]) => {
+                    {[["My Rentals","my-rentals"],["My Orders","my-orders"],["My Listings","my-listings"],["Profile","profile"],["Settings","profile"]].filter(([label]) => {
                         const needsPlan = label === "My Orders" || label === "My Listings";
                         return !needsPlan || (user.subscription || user.isMaster);
                       }).map(([label, tab]) => (
