@@ -2067,8 +2067,8 @@ export default function AdminPortal() {
           );
           const totalSpent   = rentedOrders.reduce((s, o) => s + (o.amount || 0), 0);
           const grossRevenue = ownerOrders.reduce((s, o) => s + (o.amount || 0), 0);
-          const commission   = isMaster ? (u._commission || 0) : Math.round(grossRevenue * 0.30);
-          const netRevenue   = isMaster ? (u._net || 0) : grossRevenue - commission;
+          const commission   = Math.round(grossRevenue * 0.30);
+          const netRevenue   = grossRevenue - commission;
 
           const SBox = ({ icon, label, value, color = COLORS.text, sub }) => (
             <div style={{ background: COLORS.bg, borderRadius: "10px", padding: "0.85rem 1rem", border: `1px solid ${COLORS.border}` }}>
