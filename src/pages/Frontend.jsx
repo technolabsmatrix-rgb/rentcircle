@@ -2144,7 +2144,7 @@ function ProfilePage({ user, onUpdate, onUpgrade, currentPlan, navigate, availab
 export default function RentCircle() {
   const [activeTab, setActiveTab] = useState("home");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [allProducts, setAllProducts] = useState(() => readCache()?.data || defaultProducts);
+  const [allProducts, setAllProducts] = useState(() => readCache()?.data || []);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
