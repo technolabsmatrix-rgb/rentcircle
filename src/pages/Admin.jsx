@@ -293,7 +293,7 @@ export default function AdminPortal() {
   const { categories, save: saveCategory, remove: removeCategory } = useCategories(initialCategories);
   const { products, setProducts, add: addProduct, update: updateProductDb, remove: removeProduct, refresh: refreshProducts } = useProducts(initialProducts);
   const { plans, save: savePlanDb } = usePlans(initialPlans);
-  const { users, save: saveUserDb } = useProfiles(initialUsers);
+  const { users, setUsers, save: saveUserDb } = useProfiles(initialUsers);
   const { tags, setTags, save: saveTagDb, remove: removeTagDb } = useTags(initialTags);
   const { flags: featureFlags, toggle: toggleFlag } = useFeatureFlags(defaultFlags);
   const { customFields, save: saveCustomFieldDb, remove: removeCustomFieldDb } = useCustomFields(initialCustomFields);
@@ -935,11 +935,17 @@ export default function AdminPortal() {
           {filteredUsers.length === 0 && <div style={{ padding: "3rem", textAlign: "center", color: COLORS.muted }}>No users match your filters</div>}
           {filteredUsers.slice((uPage-1)*uPerPage, uPage*uPerPage).map(u => {
             const quickVerify = async (field) => {
-              const updated = { ...u, [field]: !u[field] };
+              const newVal = !u[field];
+              // Optimistic update — UI changes instantly
+              setUsers(prev => prev.map(x => x.id === u.id ? { ...x, [field]: newVal } : x));
               try {
-                await saveUserDb(updated);
-                showNotif((updated[field] ? "✓ " : "✗ ") + (field === "emailVerified" ? "Email" : "Phone") + (updated[field] ? " verified" : " unverified"));
-              } catch(e) { showNotif("Update failed: " + e.message, "error"); }
+                await saveUserDb({ ...u, [field]: newVal });
+                showNotif((newVal ? "✓ " : "✗ ") + (field === "emailVerified" ? "Email" : "Phone") + (newVal ? " verified" : " unverified"));
+              } catch(e) {
+                // Rollback on failure
+                setUsers(prev => prev.map(x => x.id === u.id ? { ...x, [field]: u[field] } : x));
+                showNotif("Update failed: " + e.message, "error");
+              }
             };
             return (
             <div key={u.id} style={s.tr("1.8fr 1.6fr 0.7fr 0.6fr 1.8fr 0.7fr 1.5fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
@@ -952,11 +958,11 @@ export default function AdminPortal() {
               <span style={{ color: COLORS.gold, fontWeight: 600 }}>{u.rentals}</span>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  <span style={{ fontSize: "0.72rem", fontWeight: 700, color: u.emailVerified ? COLORS.green : COLORS.red, minWidth: "66px" }}>📧 {u.emailVerified ? "✓ Email" : "✗ Email"}</span>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 700, color: u.emailVerified ? COLORS.green : COLORS.red, minWidth: "68px" }}>📧 {u.emailVerified ? "✓ Email" : "✗ Email"}</span>
                   <button onClick={() => quickVerify("emailVerified")} style={{ ...s.btn(u.emailVerified ? "danger" : "success"), padding: "0.12rem 0.45rem", fontSize: "0.67rem" }}>{u.emailVerified ? "Unverify" : "Verify"}</button>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  <span style={{ fontSize: "0.72rem", fontWeight: 700, color: u.phoneVerified ? COLORS.green : COLORS.red, minWidth: "66px" }}>📱 {u.phoneVerified ? "✓ Phone" : "✗ Phone"}</span>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 700, color: u.phoneVerified ? COLORS.green : COLORS.red, minWidth: "68px" }}>📱 {u.phoneVerified ? "✓ Phone" : "✗ Phone"}</span>
                   <button onClick={() => quickVerify("phoneVerified")} style={{ ...s.btn(u.phoneVerified ? "danger" : "success"), padding: "0.12rem 0.45rem", fontSize: "0.67rem" }}>{u.phoneVerified ? "Unverify" : "Verify"}</button>
                 </div>
               </div>
@@ -966,8 +972,9 @@ export default function AdminPortal() {
                 <button style={{ ...s.btn("danger"), padding: "0.3rem 0.6rem", fontSize: "0.76rem" }}
                   onClick={async () => {
                     const updated = { ...u, status: u.status === "active" ? "suspended" : "active" };
+                    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: updated.status } : x));
                     try { await saveUserDb(updated); showNotif(u.status === "active" ? "User suspended" : "User reactivated"); }
-                    catch(e) { showNotif("Failed: " + e.message, "error"); }
+                    catch(e) { setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: u.status } : x)); showNotif("Failed: " + e.message, "error"); }
                   }}>
                   {u.status === "active" ? "Suspend" : "Activate"}
                 </button>

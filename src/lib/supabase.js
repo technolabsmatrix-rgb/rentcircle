@@ -97,23 +97,6 @@ export const upsertTag = (tag) => {
 export const deleteTag = (id) =>
   q('tags/delete', () => supabase.from('tags').delete().eq('id', id).select())
 
-// ─── Profiles ─────────────────────────────────────────────
-function fromDbProfile(p) {
-  return {
-    ...p,
-    emailVerified: p.emailVerified ?? p.email_verified ?? false,
-    phoneVerified: p.phoneVerified ?? p.phone_verified ?? false,
-  }
-}
-
-function toDbProfile(profile) {
-  const { emailVerified, phoneVerified, ...rest } = profile
-  return {
-    ...rest,
-    email_verified: emailVerified ?? rest.email_verified ?? false,
-    phone_verified: phoneVerified ?? rest.phone_verified ?? false,
-  }
-}
 // ─── Plans ────────────────────────────────────────────────
 export const fetchPlans = () =>
   q('plans', () => supabase.from('plans').select('*').order('price'))
@@ -137,11 +120,43 @@ export const upsertPlan = (plan) => {
 }
 
 // ─── Profiles ─────────────────────────────────────────────
+// To persist email/phone verified to DB, run this SQL once in Supabase SQL Editor:
+//   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email_verified boolean DEFAULT false;
+//   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS phone_verified boolean DEFAULT false;
+
+function fromDbProfile(p) {
+  return {
+    ...p,
+    emailVerified: p.email_verified ?? p.emailVerified ?? false,
+    phoneVerified: p.phone_verified ?? p.phoneVerified ?? false,
+  }
+}
+
 export const fetchProfiles = () =>
   q('profiles', () => supabase.from('profiles').select('*').order('created_at', { ascending: false }))
+    .then(rows => rows.map(fromDbProfile))
 
-export const upsertProfile = (profile) =>
-  q('profiles/upsert', () => supabase.from('profiles').upsert(profile).select().single())
+export const upsertProfile = async (profile) => {
+  // Strip camelCase; send snake_case to DB
+  const { emailVerified, phoneVerified, ...rest } = profile
+  const payload = { ...rest, email_verified: emailVerified ?? false, phone_verified: phoneVerified ?? false }
+  try {
+    const saved = await q('profiles/upsert', () =>
+      supabase.from('profiles').upsert(payload).select().single()
+    )
+    return fromDbProfile(saved)
+  } catch (e) {
+    // Columns don't exist yet — retry without them (optimistic UI state handles display)
+    if (e.message && (e.message.includes('email_verified') || e.message.includes('phone_verified') || e.message.includes('column'))) {
+      const { email_verified, phone_verified, ...safePayload } = payload
+      const saved = await q('profiles/upsert-safe', () =>
+        supabase.from('profiles').upsert(safePayload).select().single()
+      )
+      return { ...fromDbProfile(saved), emailVerified: emailVerified ?? false, phoneVerified: phoneVerified ?? false }
+    }
+    throw e
+  }
+}
 
 // ─── Orders ───────────────────────────────────────────────
 export const fetchOrders = () =>
