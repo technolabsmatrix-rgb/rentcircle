@@ -367,24 +367,24 @@ export default function AdminPortal() {
     ]
   ), [products, pSearch, pSort, pDir, pCatFilter, pStatusFilter, pUserFilter]);
 
-  // Build Master Admin synthetic user entry
-  const masterAdminEntry = useMemo(() => {
-    const email = (adminUser?.email || "master@rentcircle.in").toLowerCase();
+  // Build a synthetic admin user entry from email
+  const buildAdminEntry = (id, name, email, orders, products) => {
+    const emailLower = email.toLowerCase();
     const adminOrders = orders.filter(o => {
       const prod = products.find(p =>
-        (p.ownerEmail || p.owner_email || "").toLowerCase() === email &&
+        (p.ownerEmail || p.owner_email || "").toLowerCase() === emailLower &&
         (String(p.id) === String(o.productId || o.product_id) || p.name === o.product)
       );
       return !!prod;
     });
     const rentedOrders = orders.filter(o =>
-      (o.user_email || o.userEmail || "").toLowerCase() === email
+      (o.user_email || o.userEmail || "").toLowerCase() === emailLower
     );
     const gross = adminOrders.reduce((s, o) => s + (o.amount || 0), 0);
     return {
-      id: "__master_admin__",
-      name: adminUser?.name || "Master Admin",
-      email: adminUser?.email || "master@rentcircle.in",
+      id,
+      name,
+      email,
       plan: "Admin",
       status: "active",
       rentals: rentedOrders.length,
@@ -400,18 +400,33 @@ export default function AdminPortal() {
       _net: Math.round(gross * 0.70),
       _commission: Math.round(gross * 0.30),
     };
-  }, [adminUser, orders, products]);
+  };
+
+  // Master admin entries — always shown at top of user grid
+  const masterAdminEntry = useMemo(() =>
+    buildAdminEntry("__master_admin__", adminUser?.name || "Master Admin", adminUser?.email || "master@rentcircle.co.in", orders, products),
+    [adminUser, orders, products]
+  );
+
+  const masterAdminEntry2 = useMemo(() =>
+    buildAdminEntry("__admin2__", "Admin", "admin@rentcircle.co.in", orders, products),
+    [orders, products]
+  );
 
   const filteredUsers = useMemo(() => {
     const base = sortAndFilter(users, uSearch, ["name", "email", "city"], uSort, uDir, [
       [uPlanFilter, (u, v) => u.plan === v],
       [uStatusFilter, (u, v) => u.status === v],
     ]);
-    // Show master admin at top unless plan/status filter would exclude it
-    const showAdmin = !uPlanFilter && !uStatusFilter &&
-      (!uSearch || masterAdminEntry.name.toLowerCase().includes(uSearch.toLowerCase()) || masterAdminEntry.email.toLowerCase().includes(uSearch.toLowerCase()));
-    return showAdmin ? [masterAdminEntry, ...base] : base;
-  }, [users, masterAdminEntry, uSearch, uSort, uDir, uPlanFilter, uStatusFilter]);
+    // Show admin entries at top unless plan/status filter would exclude them
+    const q = uSearch.toLowerCase();
+    const showAdmin1 = !uPlanFilter && !uStatusFilter &&
+      (!uSearch || masterAdminEntry.name.toLowerCase().includes(q) || masterAdminEntry.email.toLowerCase().includes(q));
+    const showAdmin2 = !uPlanFilter && !uStatusFilter &&
+      (!uSearch || masterAdminEntry2.name.toLowerCase().includes(q) || masterAdminEntry2.email.toLowerCase().includes(q));
+    const adminRows = [...(showAdmin1 ? [masterAdminEntry] : []), ...(showAdmin2 ? [masterAdminEntry2] : [])];
+    return [...adminRows, ...base];
+  }, [users, masterAdminEntry, masterAdminEntry2, uSearch, uSort, uDir, uPlanFilter, uStatusFilter]);
 
   const filteredCategories = useMemo(() => categories.filter(c => !cSearch || c.name.toLowerCase().includes(cSearch.toLowerCase())), [categories, cSearch]);
   const filteredTags = useMemo(() => tags.filter(t => !tSearch || t.name.toLowerCase().includes(tSearch.toLowerCase())), [tags, tSearch]);
@@ -482,7 +497,7 @@ export default function AdminPortal() {
       minDuration: formData.minDuration || formData.min_duration || null,
       minDurationType: formData.minDurationType || formData.min_duration_type || "days",
       // Admin-added products are always owned by Master Admin
-      ...(isNew ? { owner: "Master Admin", ownerEmail: "master@rentcircle.in" } : {}),
+      ...(isNew ? { owner: "Master Admin", ownerEmail: "master@rentcircle.co.in" } : {}),
     };
     try {
       if (data.id) {
