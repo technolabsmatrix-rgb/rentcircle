@@ -2954,7 +2954,10 @@ export default function RentCircle() {
                           : <div style={{ marginTop: "0.3rem", background: "#faf5ff", color: "#7c3aed", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700, display: "inline-block", cursor: "pointer" }} onClick={() => { setUserMenuOpen(false); setSubGateOpen(true); }}>🔒 No Plan — Subscribe</div>
                       }
                     </div>
-                    {[["My Rentals","home"],["My Orders","my-orders"],["My Listings","my-listings"],["Profile","profile"],["Settings","profile"]].map(([label, tab]) => (
+                    {[["My Rentals","home"],["My Orders","my-orders"],["My Listings","my-listings"],["Profile","profile"],["Settings","profile"]].filter(([label]) => {
+                        const needsPlan = label === "My Orders" || label === "My Listings";
+                        return !needsPlan || (user.subscription || user.isMaster);
+                      }).map(([label, tab]) => (
                       <div key={label} onClick={() => navigate(tab)} style={{ padding: "0.6rem 0.75rem", borderRadius: "8px", cursor: "pointer", fontSize: "0.92rem", color: C.dark, display: "flex", alignItems: "center", gap: "0.5rem" }} onMouseEnter={e => e.currentTarget.style.background = C.bg} onMouseLeave={e => e.currentTarget.style.background = ""}>
                         {label === "My Listings" ? "🏪" : label === "My Rentals" ? "📦" : label === "My Orders" ? "📋" : label === "Profile" ? "👤" : "⚙️"} {label}
                       </div>
