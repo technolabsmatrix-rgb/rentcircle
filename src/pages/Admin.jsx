@@ -923,42 +923,58 @@ export default function AdminPortal() {
             activeFiltersCount={[uPlanFilter, uStatusFilter].filter(Boolean).length}
           />
           <div className="rc-admin-table-wrap">
-          <div style={s.th("2fr 1.8fr 0.8fr 0.7fr 1fr 0.8fr 1.5fr")}>
+          <div style={s.th("1.8fr 1.6fr 0.7fr 0.6fr 1.8fr 0.7fr 1.5fr")}>
             <SortableCol label="Name" field="name" sortField={uSort} sortDir={uDir} onSort={(f,d) => { setUSort(f); setUDir(d); }} />
             <SortableCol label="Email" field="email" sortField={uSort} sortDir={uDir} onSort={(f,d) => { setUSort(f); setUDir(d); }} />
             <SortableCol label="Plan" field="plan" sortField={uSort} sortDir={uDir} onSort={(f,d) => { setUSort(f); setUDir(d); }} />
             <SortableCol label="Rentals" field="rentals" sortField={uSort} sortDir={uDir} onSort={(f,d) => { setUSort(f); setUDir(d); }} />
-            <span>City</span>
+            <span>Verified</span>
             <span>Status</span>
             <span>Actions</span>
           </div>
           {filteredUsers.length === 0 && <div style={{ padding: "3rem", textAlign: "center", color: COLORS.muted }}>No users match your filters</div>}
-          {filteredUsers.slice((uPage-1)*uPerPage, uPage*uPerPage).map(u => (
-            <div key={u.id} style={s.tr("2fr 1.8fr 0.8fr 0.7fr 1fr 0.8fr 1.5fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
+          {filteredUsers.slice((uPage-1)*uPerPage, uPage*uPerPage).map(u => {
+            const quickVerify = async (field) => {
+              const updated = { ...u, [field]: !u[field] };
+              try {
+                await saveUserDb(updated);
+                showNotif((updated[field] ? "✓ " : "✗ ") + (field === "emailVerified" ? "Email" : "Phone") + (updated[field] ? " verified" : " unverified"));
+              } catch(e) { showNotif("Update failed: " + e.message, "error"); }
+            };
+            return (
+            <div key={u.id} style={s.tr("1.8fr 1.6fr 0.7fr 0.6fr 1.8fr 0.7fr 1.5fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
                 <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: COLORS.accentLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.82rem", flexShrink: 0, fontWeight: 700, color: COLORS.accent }}>{u.name[0]}</div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{u.name}</div>
-                  <div style={{ display: "flex", gap: "0.3rem" }}>
-                    <span style={{ fontSize: "0.65rem", color: u.emailVerified ? COLORS.green : COLORS.red }}>📧{u.emailVerified ? "✓" : "✗"}</span>
-                    <span style={{ fontSize: "0.65rem", color: u.phoneVerified ? COLORS.green : COLORS.red }}>📱{u.phoneVerified ? "✓" : "✗"}</span>
-                  </div>
-                </div>
+                <div style={{ fontWeight: 600, fontSize: "0.88rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
               </div>
               <span style={{ color: COLORS.muted, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</span>
               <span style={{ color: COLORS.accent, fontWeight: 600, fontSize: "0.85rem" }}>{u.plan}</span>
               <span style={{ color: COLORS.gold, fontWeight: 600 }}>{u.rentals}</span>
-              <span style={{ fontSize: "0.82rem" }}>{u.city || "—"}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 700, color: u.emailVerified ? COLORS.green : COLORS.red, minWidth: "66px" }}>📧 {u.emailVerified ? "✓ Email" : "✗ Email"}</span>
+                  <button onClick={() => quickVerify("emailVerified")} style={{ ...s.btn(u.emailVerified ? "danger" : "success"), padding: "0.12rem 0.45rem", fontSize: "0.67rem" }}>{u.emailVerified ? "Unverify" : "Verify"}</button>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 700, color: u.phoneVerified ? COLORS.green : COLORS.red, minWidth: "66px" }}>📱 {u.phoneVerified ? "✓ Phone" : "✗ Phone"}</span>
+                  <button onClick={() => quickVerify("phoneVerified")} style={{ ...s.btn(u.phoneVerified ? "danger" : "success"), padding: "0.12rem 0.45rem", fontSize: "0.67rem" }}>{u.phoneVerified ? "Unverify" : "Verify"}</button>
+                </div>
+              </div>
               <span style={s.badge(u.status)}>{u.status}</span>
               <div style={{ display: "flex", gap: "0.35rem" }}>
                 <button style={{ ...s.btn("secondary"), padding: "0.3rem 0.6rem", fontSize: "0.76rem" }} onClick={() => openModal("user", { ...u })}>Edit</button>
                 <button style={{ ...s.btn("danger"), padding: "0.3rem 0.6rem", fontSize: "0.76rem" }}
-                  onClick={() => { setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: x.status === "active" ? "suspended" : "active" } : x)); showNotif(u.status === "active" ? "User suspended" : "User reactivated"); }}>
+                  onClick={async () => {
+                    const updated = { ...u, status: u.status === "active" ? "suspended" : "active" };
+                    try { await saveUserDb(updated); showNotif(u.status === "active" ? "User suspended" : "User reactivated"); }
+                    catch(e) { showNotif("Failed: " + e.message, "error"); }
+                  }}>
                   {u.status === "active" ? "Suspend" : "Activate"}
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
           </div>{/* end rc-admin-table-wrap */}
           <Pagination total={filteredUsers.length} page={uPage} perPage={uPerPage} onPage={setUPage} onPerPage={(n) => { setUPerPage(n); setUPage(1); }} />
         </div>
