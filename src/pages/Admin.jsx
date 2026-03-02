@@ -369,7 +369,7 @@ export default function AdminPortal() {
 
   // Master admin entries — always shown at top of user grid
   const masterAdminEntry = useMemo(() => {
-    const email = (adminUser?.email || "master@rentcircle.co.in").toLowerCase();
+    const email = "master@rentcircle.co.in";
     const ownerOrders = orders.filter(o => {
       const prod = products.find(p =>
         (p.ownerEmail || p.owner_email || "").toLowerCase() === email &&
@@ -381,7 +381,7 @@ export default function AdminPortal() {
     const gross = ownerOrders.reduce((s, o) => s + (o.amount || 0), 0);
     return {
       id: "__master_admin__", name: adminUser?.name || "Master Admin",
-      email: adminUser?.email || "master@rentcircle.co.in",
+      email: "master@rentcircle.co.in",
       plan: "Admin", status: "active", rentals: rentedOrders.length,
       joined: "Platform Owner", city: "—", phone: "—",
       emailVerified: true, phoneVerified: true, isMasterAdmin: true,
@@ -412,7 +412,9 @@ export default function AdminPortal() {
   }, [orders, products]);
 
   const filteredUsers = useMemo(() => {
-    const base = sortAndFilter(users, uSearch, ["name", "email", "city"], uSort, uDir, [
+    const ADMIN_EMAILS = ["master@rentcircle.co.in", "master@rentcircle.in", "admin@rentcircle.co.in", "admin@rentcircle.in"];
+    const baseUsers = users.filter(u => !ADMIN_EMAILS.includes((u.email || "").toLowerCase()));
+    const base = sortAndFilter(baseUsers, uSearch, ["name", "email", "city"], uSort, uDir, [
       [uPlanFilter, (u, v) => u.plan === v],
       [uStatusFilter, (u, v) => u.status === v],
     ]);
