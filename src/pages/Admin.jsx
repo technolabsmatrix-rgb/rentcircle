@@ -367,51 +367,49 @@ export default function AdminPortal() {
     ]
   ), [products, pSearch, pSort, pDir, pCatFilter, pStatusFilter, pUserFilter]);
 
-  // Build a synthetic admin user entry from email
-  const buildAdminEntry = (id, name, email, orders, products) => {
-    const emailLower = email.toLowerCase();
-    const adminOrders = orders.filter(o => {
+  // Master admin entries — always shown at top of user grid
+  const masterAdminEntry = useMemo(() => {
+    const email = (adminUser?.email || "master@rentcircle.co.in").toLowerCase();
+    const ownerOrders = orders.filter(o => {
       const prod = products.find(p =>
-        (p.ownerEmail || p.owner_email || "").toLowerCase() === emailLower &&
+        (p.ownerEmail || p.owner_email || "").toLowerCase() === email &&
         (String(p.id) === String(o.productId || o.product_id) || p.name === o.product)
       );
       return !!prod;
     });
-    const rentedOrders = orders.filter(o =>
-      (o.user_email || o.userEmail || "").toLowerCase() === emailLower
-    );
-    const gross = adminOrders.reduce((s, o) => s + (o.amount || 0), 0);
+    const rentedOrders = orders.filter(o => (o.user_email || o.userEmail || "").toLowerCase() === email);
+    const gross = ownerOrders.reduce((s, o) => s + (o.amount || 0), 0);
     return {
-      id,
-      name,
-      email,
-      plan: "Admin",
-      status: "active",
-      rentals: rentedOrders.length,
-      joined: "Platform Owner",
-      city: "—",
-      phone: "—",
-      emailVerified: true,
-      phoneVerified: true,
-      isMasterAdmin: true,
-      _adminOrders: adminOrders,
-      _rentedOrders: rentedOrders,
-      _gross: gross,
-      _net: Math.round(gross * 0.70),
-      _commission: Math.round(gross * 0.30),
+      id: "__master_admin__", name: adminUser?.name || "Master Admin",
+      email: adminUser?.email || "master@rentcircle.co.in",
+      plan: "Admin", status: "active", rentals: rentedOrders.length,
+      joined: "Platform Owner", city: "—", phone: "—",
+      emailVerified: true, phoneVerified: true, isMasterAdmin: true,
+      _adminOrders: ownerOrders, _rentedOrders: rentedOrders,
+      _gross: gross, _net: Math.round(gross * 0.70), _commission: Math.round(gross * 0.30),
     };
-  };
+  }, [adminUser, orders, products]);
 
-  // Master admin entries — always shown at top of user grid
-  const masterAdminEntry = useMemo(() =>
-    buildAdminEntry("__master_admin__", adminUser?.name || "Master Admin", adminUser?.email || "master@rentcircle.co.in", orders, products),
-    [adminUser, orders, products]
-  );
-
-  const masterAdminEntry2 = useMemo(() =>
-    buildAdminEntry("__admin2__", "Admin", "admin@rentcircle.co.in", orders, products),
-    [orders, products]
-  );
+  const masterAdminEntry2 = useMemo(() => {
+    const email = "admin@rentcircle.co.in";
+    const ownerOrders = orders.filter(o => {
+      const prod = products.find(p =>
+        (p.ownerEmail || p.owner_email || "").toLowerCase() === email &&
+        (String(p.id) === String(o.productId || o.product_id) || p.name === o.product)
+      );
+      return !!prod;
+    });
+    const rentedOrders = orders.filter(o => (o.user_email || o.userEmail || "").toLowerCase() === email);
+    const gross = ownerOrders.reduce((s, o) => s + (o.amount || 0), 0);
+    return {
+      id: "__admin2__", name: "Admin", email: "admin@rentcircle.co.in",
+      plan: "Admin", status: "active", rentals: rentedOrders.length,
+      joined: "Platform Owner", city: "—", phone: "—",
+      emailVerified: true, phoneVerified: true, isMasterAdmin: true,
+      _adminOrders: ownerOrders, _rentedOrders: rentedOrders,
+      _gross: gross, _net: Math.round(gross * 0.70), _commission: Math.round(gross * 0.30),
+    };
+  }, [orders, products]);
 
   const filteredUsers = useMemo(() => {
     const base = sortAndFilter(users, uSearch, ["name", "email", "city"], uSort, uDir, [
