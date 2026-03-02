@@ -97,6 +97,24 @@ export const upsertTag = (tag) => {
 export const deleteTag = (id) =>
   q('tags/delete', () => supabase.from('tags').delete().eq('id', id).select())
 
+// Map DB snake_case → JS camelCase so Admin reads the right fields
+function fromDbProfile(p) {
+  return {
+    ...p,
+    emailVerified: p.email_verified ?? false,
+    phoneVerified: p.phone_verified ?? false,
+  }
+}
+
+// Map JS camelCase → DB snake_case before writing
+function toDbProfile({ emailVerified, phoneVerified, ...rest }) {
+  return {
+    ...rest,
+    ...(emailVerified !== undefined && { email_verified: emailVerified }),
+    ...(phoneVerified !== undefined && { phone_verified: phoneVerified }),
+  }
+}
+
 // ─── Plans ────────────────────────────────────────────────
 export const fetchPlans = () =>
   q('plans', () => supabase.from('plans').select('*').order('price'))
