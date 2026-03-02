@@ -370,14 +370,16 @@ export default function AdminPortal() {
   // Master admin entries — always shown at top of user grid
   const masterAdminEntry = useMemo(() => {
     const email = "master@rentcircle.co.in";
+    // Match both .co.in and .in variants in case DB still has old email
+    const masterEmails = ["master@rentcircle.co.in", "master@rentcircle.in"];
     const ownerOrders = orders.filter(o => {
       const prod = products.find(p =>
-        (p.ownerEmail || p.owner_email || "").toLowerCase() === email &&
+        masterEmails.includes((p.ownerEmail || p.owner_email || "").toLowerCase()) &&
         (String(p.id) === String(o.productId || o.product_id) || p.name === o.product)
       );
       return !!prod;
     });
-    const rentedOrders = orders.filter(o => (o.user_email || o.userEmail || "").toLowerCase() === email);
+    const rentedOrders = orders.filter(o => masterEmails.includes((o.user_email || o.userEmail || "").toLowerCase()));
     const gross = ownerOrders.reduce((s, o) => s + (o.amount || 0), 0);
     return {
       id: "__master_admin__", name: adminUser?.name || "Master Admin",
@@ -391,15 +393,15 @@ export default function AdminPortal() {
   }, [adminUser, orders, products]);
 
   const masterAdminEntry2 = useMemo(() => {
-    const email = "admin@rentcircle.co.in";
+    const adminEmails = ["admin@rentcircle.co.in", "admin@rentcircle.in"];
     const ownerOrders = orders.filter(o => {
       const prod = products.find(p =>
-        (p.ownerEmail || p.owner_email || "").toLowerCase() === email &&
+        adminEmails.includes((p.ownerEmail || p.owner_email || "").toLowerCase()) &&
         (String(p.id) === String(o.productId || o.product_id) || p.name === o.product)
       );
       return !!prod;
     });
-    const rentedOrders = orders.filter(o => (o.user_email || o.userEmail || "").toLowerCase() === email);
+    const rentedOrders = orders.filter(o => adminEmails.includes((o.user_email || o.userEmail || "").toLowerCase()));
     const gross = ownerOrders.reduce((s, o) => s + (o.amount || 0), 0);
     return {
       id: "__admin2__", name: "Admin", email: "admin@rentcircle.co.in",
@@ -2040,21 +2042,25 @@ export default function AdminPortal() {
           const isMaster = u.isMasterAdmin;
 
           // For master admin use pre-computed fields, for regular users compute from orders
-          const rentedOrders = isMaster ? (u._rentedOrders || []) : orders.filter(o =>
+          const rentedOrders = u._rentedOrders || (isMaster ? [] : orders.filter(o =>
             (o.user_email || o.userEmail || "").toLowerCase() === u.email.toLowerCase()
-          );
-          const ownerOrders = isMaster ? (u._adminOrders || []) : orders.filter(o => {
+          ));
+          const ownerOrders = (u._adminOrders && u._adminOrders.length > 0) ? u._adminOrders : orders.filter(o => {
             const ownerProd = products.find(p =>
-              (p.ownerEmail || p.owner_email || "").toLowerCase() === u.email.toLowerCase() &&
+              ownerEmailVariants.includes((p.ownerEmail || p.owner_email || "").toLowerCase()) &&
               (String(p.id) === String(o.productId || o.product_id) || p.name === o.product)
             );
             return !!ownerProd;
           });
+          // For admin users match both .co.in and .in variants
+          const ownerEmailVariants = u.isMasterAdmin
+            ? [u.email.toLowerCase(), u.email.toLowerCase().replace("@rentcircle.co.in", "@rentcircle.in").replace("@rentcircle.in", "@rentcircle.co.in"), u.email.toLowerCase().replace(".co.in", ".in")]
+            : [u.email.toLowerCase()];
           const ownerProducts = products.filter(p =>
-            (p.ownerEmail || p.owner_email || "").toLowerCase() === u.email.toLowerCase()
+            ownerEmailVariants.includes((p.ownerEmail || p.owner_email || "").toLowerCase())
           );
           const totalSpent   = rentedOrders.reduce((s, o) => s + (o.amount || 0), 0);
-          const grossRevenue = isMaster ? (u._gross || 0) : ownerOrders.reduce((s, o) => s + (o.amount || 0), 0);
+          const grossRevenue = ownerOrders.reduce((s, o) => s + (o.amount || 0), 0);
           const commission   = isMaster ? (u._commission || 0) : Math.round(grossRevenue * 0.30);
           const netRevenue   = isMaster ? (u._net || 0) : grossRevenue - commission;
 
