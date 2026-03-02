@@ -303,6 +303,7 @@ export default function AdminPortal() {
   const [modalErrors, setModalErrors] = useState({});
   const [notification, setNotification] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   // Per-section search/sort/filter state
   const [pSearch, setPSearch] = useState(""); const [pSort, setPSort] = useState(""); const [pDir, setPDir] = useState("asc"); const [pCatFilter, setPCatFilter] = useState(""); const [pStatusFilter, setPStatusFilter] = useState(""); const [pUserFilter, setPUserFilter] = useState("");
   const [uSearch, setUSearch] = useState(""); const [uSort, setUSort] = useState(""); const [uDir, setUDir] = useState("asc"); const [uPlanFilter, setUPlanFilter] = useState(""); const [uStatusFilter, setUStatusFilter] = useState("");
@@ -482,7 +483,7 @@ export default function AdminPortal() {
     app: { display: "flex", minHeight: "100vh", background: COLORS.bg, color: COLORS.text, fontFamily: "'DM Sans', sans-serif" },
     sidebar: { width: sidebarOpen ? "240px" : "72px", background: COLORS.surface, borderRight: `1px solid ${COLORS.border}`, transition: "width 0.3s", flexShrink: 0, display: "flex", flexDirection: "column" },
     navItem: (active) => ({ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.7rem 1.2rem", cursor: "pointer", borderRadius: "10px", margin: "0.1rem 0.7rem", background: active ? COLORS.accentLight : "transparent", color: active ? COLORS.accent : COLORS.muted, borderLeft: active ? `3px solid ${COLORS.accent}` : "3px solid transparent", transition: "all 0.2s", whiteSpace: "nowrap", overflow: "hidden", fontSize: "0.88rem", fontWeight: active ? 600 : 400 }),
-    main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
+    main: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 },
     topbar: { background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, padding: "0.9rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between" },
     content: { flex: 1, overflowY: "auto", padding: "1.75rem" },
     card: { background: COLORS.surface, borderRadius: "16px", border: `1px solid ${COLORS.border}`, overflow: "hidden" },
@@ -540,7 +541,7 @@ export default function AdminPortal() {
         {statCard("Products", products.length.toString(), "+2", true, "🏷️")}
         {statCard("Tags Active", tags.filter(t => t.active).length, "+1", true, "🔖")}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem" }}>
+      <div className="rc-admin-dash-lower" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem" }}>
         <div style={s.card}>
           <div style={{ padding: "1.25rem 1.5rem 0", fontWeight: 700, fontSize: "0.95rem" }}>Recent Orders</div>
           <div style={s.th("2fr 1fr 1fr 1fr")}><span>Product</span><span>User</span><span>Amount</span><span>Status</span></div>
@@ -715,6 +716,7 @@ export default function AdminPortal() {
             onClear={() => { setPSearch(""); setPSort(""); setPCatFilter(""); setPStatusFilter(""); setPUserFilter(""); setPPage(1); }}
             activeFiltersCount={[pCatFilter, pStatusFilter, pUserFilter].filter(Boolean).length}
           />
+          <div className="rc-admin-table-wrap">
           <div style={s.th("2fr 1fr 0.9fr 0.7fr 0.7fr 1.5fr 1.2fr 1.4fr")}>
             <SortableCol label="Product" field="name" sortField={pSort} sortDir={pDir} onSort={(f,d) => { setPSort(f); setPDir(d); }} />
             <SortableCol label="Category" field="category" sortField={pSort} sortDir={pDir} onSort={(f,d) => { setPSort(f); setPDir(d); }} />
@@ -773,6 +775,7 @@ export default function AdminPortal() {
             </div>
             );
           })}
+          </div>{/* end rc-admin-table-wrap */}
           <Pagination total={filteredProducts.length} page={pPage} perPage={pPerPage} onPage={setPPage} onPerPage={(n) => { setPPerPage(n); setPPage(1); }} />
         </div>
       </>
@@ -919,6 +922,7 @@ export default function AdminPortal() {
             onClear={() => { setUSearch(""); setUSort(""); setUPlanFilter(""); setUStatusFilter(""); setUPage(1); }}
             activeFiltersCount={[uPlanFilter, uStatusFilter].filter(Boolean).length}
           />
+          <div className="rc-admin-table-wrap">
           <div style={s.th("2fr 1.8fr 0.8fr 0.7fr 1fr 0.8fr 1.5fr")}>
             <SortableCol label="Name" field="name" sortField={uSort} sortDir={uDir} onSort={(f,d) => { setUSort(f); setUDir(d); }} />
             <SortableCol label="Email" field="email" sortField={uSort} sortDir={uDir} onSort={(f,d) => { setUSort(f); setUDir(d); }} />
@@ -955,6 +959,7 @@ export default function AdminPortal() {
               </div>
             </div>
           ))}
+          </div>{/* end rc-admin-table-wrap */}
           <Pagination total={filteredUsers.length} page={uPage} perPage={uPerPage} onPage={setUPage} onPerPage={(n) => { setUPerPage(n); setUPage(1); }} />
         </div>
       </>
@@ -985,6 +990,7 @@ export default function AdminPortal() {
             onClear={() => { setOSearch(""); setOSort(""); setOStatusFilter(""); setOPage(1); }}
             activeFiltersCount={oStatusFilter ? 1 : 0}
           />
+          <div className="rc-admin-table-wrap">
           <div style={s.th("0.9fr 1.8fr 1.6fr 0.5fr 1fr 1.05fr 1.05fr 1.8fr 1.4fr")}>
             <SortableCol label="Order ID" field="id" sortField={oSort} sortDir={oDir} onSort={(f,d) => { setOSort(f); setODir(d); }} />
             <SortableCol label="Product" field="product" sortField={oSort} sortDir={oDir} onSort={(f,d) => { setOSort(f); setODir(d); }} />
@@ -1064,6 +1070,7 @@ export default function AdminPortal() {
               </div>
             );
           })}
+          </div>{/* end rc-admin-table-wrap */}
           <Pagination total={filteredOrders.length} page={oPage} perPage={oPerPage} onPage={setOPage} onPerPage={(n) => { setOPerPage(n); setOPage(1); }} />
         </div>
       </>
@@ -1262,6 +1269,30 @@ export default function AdminPortal() {
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      <style>{`
+        @media (max-width: 768px) {
+          .rc-admin-sidebar { position: fixed !important; left: 0; top: 0; bottom: 0; z-index: 200; transform: translateX(-100%); transition: transform 0.3s !important; width: 240px !important; box-shadow: 4px 0 30px rgba(0,0,0,0.2); }
+          .rc-admin-sidebar.open { transform: translateX(0) !important; }
+          .rc-admin-overlay { display: block !important; }
+          .rc-admin-hamburger { display: flex !important; }
+          .rc-admin-topbar-right .rc-hide-mobile { display: none !important; }
+          .rc-admin-content { padding: 1rem !important; }
+          .rc-admin-topbar { padding: 0.75rem 1rem !important; }
+          .rc-admin-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .rc-admin-table-wrap > div { min-width: 700px; }
+          .rc-admin-grid-2 { grid-template-columns: 1fr !important; }
+          .rc-admin-grid-3 { grid-template-columns: 1fr 1fr !important; }
+          .rc-admin-dash-lower { grid-template-columns: 1fr !important; }
+          .rc-admin-filters { flex-wrap: wrap !important; }
+          .rc-admin-filters > select, .rc-admin-filters > div { min-width: 0 !important; flex: 1 1 140px !important; }
+          .rc-admin-modal-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 480px) {
+          .rc-admin-grid-3 { grid-template-columns: 1fr !important; }
+        }
+        .rc-admin-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 199; }
+        .rc-admin-hamburger { display: none; background: none; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.45rem 0.6rem; cursor: pointer; font-size: 1.1rem; align-items: center; justify-content: center; color: #374151; }
+      `}</style>
       <div style={s.app}>
         {notification && (
           <div style={{ position: "fixed", bottom: "2rem", right: "2rem", background: notification.type === "error" ? COLORS.red : COLORS.green, color: "#fff", padding: "0.9rem 1.4rem", borderRadius: "12px", fontWeight: 600, zIndex: 999, boxShadow: "0 10px 30px rgba(0,0,0,0.2)", fontSize: "0.9rem", animation: "slideIn 0.3s ease" }}>
@@ -1269,15 +1300,18 @@ export default function AdminPortal() {
           </div>
         )}
 
+        {/* Mobile sidebar overlay */}
+        {mobileSidebarOpen && <div className="rc-admin-overlay" style={{ display: "block" }} onClick={() => setMobileSidebarOpen(false)} />}
+
         {/* Sidebar */}
-        <div style={s.sidebar}>
+        <div className={`rc-admin-sidebar${mobileSidebarOpen ? " open" : ""}`} style={s.sidebar}>
           <div style={{ padding: "1.25rem", borderBottom: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", gap: "0.7rem" }}>
             <div style={{ width: "32px", height: "32px", background: COLORS.accent, borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", color: "#fff", fontWeight: 900, fontSize: "0.75rem" }} onClick={() => setSidebarOpen(o => !o)}>RC</div>
             {sidebarOpen && <span style={{ fontWeight: 700, fontSize: "0.9rem", color: COLORS.text }}>RentCircle <span style={{ color: COLORS.muted, fontWeight: 400, fontSize: "0.75rem" }}>Admin</span></span>}
           </div>
           <nav style={{ padding: "0.75rem 0", flex: 1, overflowY: "auto" }}>
             {navItems.map(item => (
-              <div key={item.id} style={s.navItem(activeSection === item.id)} onClick={() => { setActiveSection(item.id); refreshProducts(); }}>
+              <div key={item.id} style={s.navItem(activeSection === item.id)} onClick={() => { setActiveSection(item.id); refreshProducts(); setMobileSidebarOpen(false); }}>
                 <span style={{ fontSize: "1.05rem", flexShrink: 0 }}>{item.icon}</span>
                 {sidebarOpen && <span>{item.label}</span>}
                 {sidebarOpen && item.id === "tags" && featureFlags.tagging && <span style={{ marginLeft: "auto", background: COLORS.accentLight, color: COLORS.accent, borderRadius: "4px", padding: "0.1rem 0.4rem", fontSize: "0.65rem", fontWeight: 700 }}>{tags.filter(t => t.active).length}</span>}
@@ -1302,15 +1336,18 @@ export default function AdminPortal() {
 
         {/* Main */}
         <div style={s.main}>
-          <div style={s.topbar}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: "1rem" }}>{navItems.find(n => n.id === activeSection)?.label || "Dashboard"}</div>
-              <div style={{ fontSize: "0.75rem", color: COLORS.muted }}>RentCircle Admin Panel</div>
+          <div className="rc-admin-topbar" style={s.topbar}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <button className="rc-admin-hamburger" onClick={() => setMobileSidebarOpen(o => !o)}>☰</button>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: "1rem" }}>{navItems.find(n => n.id === activeSection)?.label || "Dashboard"}</div>
+                <div style={{ fontSize: "0.75rem", color: COLORS.muted }}>RentCircle Admin Panel</div>
+              </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <div style={{ background: COLORS.bg, borderRadius: "10px", padding: "0.4rem 0.9rem", fontSize: "0.82rem", color: COLORS.muted }}>🟢 Systems normal</div>
-              <div style={{ background: "rgba(16,185,129,0.12)", color: COLORS.green, borderRadius: "10px", padding: "0.4rem 0.9rem", fontSize: "0.82rem", fontWeight: 600 }}>₹ INR</div>
-              <div style={{ display: "flex", gap: "0.3rem" }}>
+            <div className="rc-admin-topbar-right" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div className="rc-hide-mobile" style={{ background: COLORS.bg, borderRadius: "10px", padding: "0.4rem 0.9rem", fontSize: "0.82rem", color: COLORS.muted }}>🟢 Systems normal</div>
+              <div className="rc-hide-mobile" style={{ background: "rgba(16,185,129,0.12)", color: COLORS.green, borderRadius: "10px", padding: "0.4rem 0.9rem", fontSize: "0.82rem", fontWeight: 600 }}>₹ INR</div>
+              <div className="rc-hide-mobile" style={{ display: "flex", gap: "0.3rem" }}>
                 {Object.entries(featureFlags).slice(0, 4).map(([k, v]) => (
                   <div key={k} title={k} style={{ width: "8px", height: "8px", borderRadius: "50%", background: v ? COLORS.green : COLORS.red }} />
                 ))}
@@ -1318,7 +1355,7 @@ export default function AdminPortal() {
               <div style={{ width: "34px", height: "34px", background: COLORS.accent, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "#fff", cursor: "pointer", fontSize: "0.9rem" }}>A</div>
             </div>
           </div>
-          <div style={s.content}>{renderContent()}</div>
+          <div className="rc-admin-content" style={s.content}>{renderContent()}</div>
         </div>
 
         {/* ═══ MODALS ═══ */}

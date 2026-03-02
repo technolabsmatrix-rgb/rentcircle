@@ -1142,7 +1142,7 @@ function ContactPage() {
     <>
       <PageHero icon="📬" title="Contact Us" subtitle="We're here to help. Reach out and we'll respond within 24 hours." />
       <Section>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr", gap: "3rem", alignItems: "start" }}>
+        <div className="rc-contact-grid" style={{ display: "grid", gap: "2rem", alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
             {[{ icon: "📍", title: "Our Office", lines: ["Rent Circle", "201 Maruti 4, Opp Parivar Party Plot,", "Vasna, Ahmedabad 380007", "Gujarat, India"] }, { icon: "📞", title: "Phone", lines: ["+91 91691 68009", "Mon–Sat, 9 AM – 8 PM IST"] }, { icon: "✉️", title: "Email", lines: ["support@rentcircle.in", "business@rentcircle.in"] }].map(c => (
               <div key={c.title} style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", border: `1px solid ${C.border}` }}>
@@ -2875,14 +2875,16 @@ export default function RentCircle() {
           .rc-hero-inner { grid-template-columns: 1fr !important; text-align: center; gap: 2rem; }
           .rc-hero-right { display: none !important; }
           .rc-footer-grid { grid-template-columns: 1fr 1fr !important; gap: 1.5rem !important; }
-          .rc-contact-grid { grid-template-columns: 1fr !important; }
-          .rc-about-grid { grid-template-columns: 1fr !important; }
+          .rc-contact-grid { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
+          .rc-about-grid { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
           .rc-stat-item { border-right: none !important; }
+          .rc-section { padding: 3rem 1.25rem !important; }
+          .rc-page-hero { padding: 3rem 1.25rem !important; }
         }
         @media (max-width: 640px) {
           .rc-footer-grid { grid-template-columns: 1fr !important; gap: 1.25rem !important; }
           .rc-stat-item { padding: 0.9rem 1.2rem !important; min-width: 100px !important; }
-          input, select, textarea, button { font-size: 16px !important; } /* Prevent iOS zoom */
+          input, select, textarea { font-size: 16px !important; } /* Prevent iOS zoom */
         }
         /* Hover effects */
         .rc-product-card:hover { transform: translateY(-5px); }
@@ -2977,6 +2979,16 @@ export default function RentCircle() {
                 <div key={key} onClick={() => { navigate(key); setMobileMenuOpen(false); }} style={{ padding: "0.9rem 1rem", borderRadius: "10px", color: activeTab === key ? C.gold : "rgba(255,255,255,0.8)", fontWeight: activeTab === key ? 700 : 500, fontSize: "1rem", cursor: "pointer", background: activeTab === key ? "rgba(245,158,11,0.1)" : "transparent" }}>{label}</div>
               ))}
               {user && <div onClick={() => { handleListProduct(); setMobileMenuOpen(false); }} style={{ padding: "0.9rem 1rem", borderRadius: "10px", color: "#c4b5fd", fontWeight: 600, fontSize: "1rem", cursor: "pointer" }}>🏪 {(user.subscription || user.isMaster) ? "List Product" : "List Product 🔒"}</div>}
+              {availableCities.length > 0 && (
+                <div style={{ padding: "0.75rem 1rem", borderTop: "1px solid rgba(255,255,255,0.1)", marginTop: "0.5rem" }}>
+                  <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.45)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>📍 Filter by City</div>
+                  <select value={selectedCity} onChange={e => { setSelectedCity(e.target.value); setMobileMenuOpen(false); }}
+                    style={{ width: "100%", background: selectedCity ? C.gold : "rgba(255,255,255,0.12)", border: `1.5px solid ${selectedCity ? C.gold : "rgba(255,255,255,0.2)"}`, borderRadius: "10px", padding: "0.65rem 1rem", color: selectedCity ? C.dark : "rgba(255,255,255,0.85)", fontFamily: "'Outfit', sans-serif", fontWeight: 600, fontSize: "0.95rem", cursor: "pointer", outline: "none" }}>
+                    <option value="">All Cities</option>
+                    {availableCities.map(city => <option key={city} value={city}>{city}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         )}
