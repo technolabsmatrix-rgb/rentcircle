@@ -114,7 +114,6 @@ function toDbProfile(profile) {
     phone_verified: phoneVerified ?? rest.phone_verified ?? false,
   }
 }
-
 // ─── Plans ────────────────────────────────────────────────
 export const fetchPlans = () =>
   q('plans', () => supabase.from('plans').select('*').order('price'))
