@@ -2136,22 +2136,7 @@ export default function AdminPortal() {
                       <SBox icon="💸" label="Total Spent" value={INR(totalSpent)} color={COLORS.red} />
                     </div>
                     {rentedOrders.length === 0 && <div style={{ marginTop: "0.5rem", fontSize: "0.82rem", color: COLORS.muted }}>No rentals placed yet.</div>}
-                    {rentedOrders.length > 0 && (
-                      <div style={{ marginTop: "0.65rem", background: COLORS.bg, borderRadius: "10px", border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.7fr 0.9fr", gap: "0.5rem", padding: "0.5rem 1rem", fontSize: "0.67rem", fontWeight: 700, color: COLORS.muted, textTransform: "uppercase", background: "#fff", borderBottom: `1px solid ${COLORS.border}` }}>
-                          <span>Order</span><span>Product</span><span>Days</span><span>Amount</span>
-                        </div>
-                        {rentedOrders.slice(0, 5).map(o => (
-                          <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.7fr 0.9fr", gap: "0.5rem", padding: "0.5rem 1rem", fontSize: "0.79rem", borderBottom: `1px solid ${COLORS.border}` }}>
-                            <span style={{ fontFamily: "monospace", color: COLORS.accent, fontWeight: 700, fontSize: "0.73rem" }}>{o.id}</span>
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>{o.product}</span>
-                            <span>{o.days ?? "—"}d</span>
-                            <span style={{ fontWeight: 700, color: COLORS.red }}>{INR(o.amount || 0)}</span>
-                          </div>
-                        ))}
-                        {rentedOrders.length > 5 && <div style={{ padding: "0.4rem 1rem", fontSize: "0.73rem", color: COLORS.muted }}>+{rentedOrders.length - 5} more</div>}
-                      </div>
-                    )}
+                    
                   </div>
 
                   {/* As Owner / Revenue */}
@@ -2180,23 +2165,6 @@ export default function AdminPortal() {
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
                           {ownerProducts.map(p => <span key={p.id} style={{ background: COLORS.accentLight, color: COLORS.accent, borderRadius: "6px", padding: "0.18rem 0.55rem", fontSize: "0.73rem", fontWeight: 600 }}>{p.name}</span>)}
                         </div>
-                      </div>
-                    )}
-                    {ownerOrders.length > 0 && (
-                      <div style={{ marginTop: "0.65rem", background: COLORS.bg, borderRadius: "10px", border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.7fr 1fr 1fr", gap: "0.5rem", padding: "0.5rem 1rem", fontSize: "0.67rem", fontWeight: 700, color: COLORS.muted, textTransform: "uppercase", background: "#fff", borderBottom: `1px solid ${COLORS.border}` }}>
-                          <span>Order</span><span>Product</span><span>Days</span><span>Gross</span><span>Net (70%)</span>
-                        </div>
-                        {ownerOrders.slice(0, 5).map(o => (
-                          <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.7fr 1fr 1fr", gap: "0.5rem", padding: "0.5rem 1rem", fontSize: "0.79rem", borderBottom: `1px solid ${COLORS.border}` }}>
-                            <span style={{ fontFamily: "monospace", color: COLORS.accent, fontWeight: 700, fontSize: "0.73rem" }}>{o.id}</span>
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>{o.product}</span>
-                            <span>{o.days ?? "—"}d</span>
-                            <span style={{ fontWeight: 700 }}>{INR(o.amount || 0)}</span>
-                            <span style={{ fontWeight: 800, color: COLORS.green }}>{INR(Math.round((o.amount || 0) * 0.70))}</span>
-                          </div>
-                        ))}
-                        {ownerOrders.length > 5 && <div style={{ padding: "0.4rem 1rem", fontSize: "0.73rem", color: COLORS.muted }}>+{ownerOrders.length - 5} more</div>}
                       </div>
                     )}
                     {ownerOrders.length === 0 && <div style={{ marginTop: "0.5rem", fontSize: "0.82rem", color: COLORS.muted }}>No orders on listed products yet.</div>}

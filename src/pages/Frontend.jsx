@@ -58,7 +58,6 @@ function MyOrdersPage({ user, allProducts }) {
   const grossRevenue   = orders.reduce((s, o) => s + (o.amount || 0), 0);
   const commission     = Math.round(grossRevenue * 0.30);
   const netRevenue     = grossRevenue - commission;
-  const totalRevenue   = grossRevenue; // keep for compat
   const activeCount    = orders.filter(o => o.status === "active").length;
   const completedCount = orders.filter(o => o.status === "completed").length;
 
@@ -75,7 +74,7 @@ function MyOrdersPage({ user, allProducts }) {
           {label:"Total Orders",value:orders.length,icon:"📦",color:C.dark,sub:null},
           {label:"Active",value:activeCount,icon:"🟢",color:"#10b981",sub:null},
           {label:"Gross Revenue",value:`₹${Number(grossRevenue).toLocaleString("en-IN")}`,icon:"💵",color:C.dark,sub:"100% collected"},
-          {label:"Platform Fee (30%)",value:`₹${Number(commission).toLocaleString("en-IN")}`,icon:"🏦",color:C.red,sub:"Deducted commission"},
+          {label:"Platform Fee (30%)",value:`₹${Number(commission).toLocaleString("en-IN")}`,icon:"🏦",color:"#ef4444",sub:"Deducted commission"},
           {label:"Your Earnings (70%)",value:`₹${Number(netRevenue).toLocaleString("en-IN")}`,icon:"💰",color:C.green,sub:"Net payout to you"},
         ].map(s=>(
           <div key={s.label} style={{ background:"#fff",borderRadius:"16px",padding:"1.25rem 1.5rem",border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
@@ -123,9 +122,9 @@ function MyOrdersPage({ user, allProducts }) {
                   <div style={{ fontWeight:700,fontSize:"0.88rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{o.product||"—"}</div>
                   <div style={{ fontWeight:600,fontSize:"0.88rem" }}>{o.days??"-"}d</div>
                   <div>
-                    <div style={{ fontWeight:800,color:C.dark,fontSize:"0.92rem" }}>₹{Number(o.amount||0).toLocaleString("en-IN")}</div>
-                    <div style={{ fontSize:"0.7rem",color:C.green,fontWeight:700 }}>+₹{Number(Math.round((o.amount||0)*0.70)).toLocaleString("en-IN")} yours</div>
-                    <div style={{ fontSize:"0.68rem",color:C.muted }}>−₹{Number(Math.round((o.amount||0)*0.30)).toLocaleString("en-IN")} fee</div>
+                    <div style={{ fontWeight:800,color:C.dark,fontSize:"0.9rem" }}>₹{Number(o.amount||0).toLocaleString("en-IN")}</div>
+                    <div style={{ fontSize:"0.72rem",color:"#10b981",fontWeight:700 }}>+₹{Number(Math.round((o.amount||0)*0.70)).toLocaleString("en-IN")} yours</div>
+                    <div style={{ fontSize:"0.7rem",color:C.muted }}>−₹{Number(Math.round((o.amount||0)*0.30)).toLocaleString("en-IN")} fee</div>
                   </div>
                   <div>
                     <div style={{ fontSize:"0.78rem",fontWeight:600 }}>{o.start_date||"—"}</div>
