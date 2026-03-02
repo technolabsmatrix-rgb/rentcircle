@@ -97,21 +97,21 @@ export const upsertTag = (tag) => {
 export const deleteTag = (id) =>
   q('tags/delete', () => supabase.from('tags').delete().eq('id', id).select())
 
-// Map DB snake_case → JS camelCase so Admin reads the right fields
+// ─── Profiles ─────────────────────────────────────────────
 function fromDbProfile(p) {
   return {
     ...p,
-    emailVerified: p.email_verified ?? false,
-    phoneVerified: p.phone_verified ?? false,
+    emailVerified: p.emailVerified ?? p.email_verified ?? false,
+    phoneVerified: p.phoneVerified ?? p.phone_verified ?? false,
   }
 }
 
-// Map JS camelCase → DB snake_case before writing
-function toDbProfile({ emailVerified, phoneVerified, ...rest }) {
+function toDbProfile(profile) {
+  const { emailVerified, phoneVerified, ...rest } = profile
   return {
     ...rest,
-    ...(emailVerified !== undefined && { email_verified: emailVerified }),
-    ...(phoneVerified !== undefined && { phone_verified: phoneVerified }),
+    email_verified: emailVerified ?? rest.email_verified ?? false,
+    phone_verified: phoneVerified ?? rest.phone_verified ?? false,
   }
 }
 
