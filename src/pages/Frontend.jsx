@@ -572,20 +572,14 @@ function SubscriptionGate({ onClose, onSubscribe, user }) {
 
 /* ─── Price Display Helper ─── */
 function PriceDisplay({ p, size = "md" }) {
-  const [period, setPeriod] = useState("day");
-  const price = period === "day" ? p.priceDay : period === "month" ? p.priceMonth : p.priceYear;
-  const label = period === "day" ? "/day" : period === "month" ? "/month" : "/year";
-  const tabs = [["day","D"],["month","M"],["year","Y"]];
+  const minDurType = p.minDurationType || p.min_duration_type || "days";
+  const price = minDurType === "months" ? p.priceMonth : minDurType === "years" ? p.priceYear : p.priceDay;
+  const label = minDurType === "months" ? "/month" : minDurType === "years" ? "/year" : "/day";
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
       <div>
         <span style={{ fontSize: size === "lg" ? "1.5rem" : "1.1rem", fontWeight: 900 }}>{INR(price || 0)}</span>
         <span style={{ fontSize: "0.72rem", color: C.muted, marginLeft: "2px" }}>{label}</span>
-      </div>
-      <div style={{ display: "flex", background: "#f3f4f6", borderRadius: "8px", overflow: "hidden", flexShrink: 0 }}>
-        {tabs.map(([k, l]) => (
-          <button key={k} onClick={e => { e.stopPropagation(); setPeriod(k); }} style={{ border: "none", padding: "0.2rem 0.4rem", background: period === k ? C.dark : "transparent", color: period === k ? "#fff" : C.muted, cursor: "pointer", fontSize: "0.65rem", fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>{l}</button>
-        ))}
       </div>
     </div>
   );
@@ -2596,8 +2590,15 @@ export default function RentCircle() {
                       {/* Price + CTA */}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <div>
-                          <div style={{ color: C.gold, fontWeight: 900, fontSize: "1.15rem" }}>{INR(p.priceDay)}</div>
-                          <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.72rem" }}>per day</div>
+                          {(() => {
+                            const minDurType = p.minDurationType || p.min_duration_type || "days";
+                            const price = minDurType === "months" ? p.priceMonth : minDurType === "years" ? p.priceYear : p.priceDay;
+                            const label = minDurType === "months" ? "per month" : minDurType === "years" ? "per year" : "per day";
+                            return (<>
+                              <div style={{ color: C.gold, fontWeight: 900, fontSize: "1.15rem" }}>{INR(price)}</div>
+                              <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.72rem" }}>{label}</div>
+                            </>);
+                          })()}
                         </div>
                         <div style={{ background: C.gold, color: C.dark, borderRadius: "10px", padding: "0.45rem 0.9rem", fontSize: "0.82rem", fontWeight: 800 }}>Rent Now</div>
                       </div>
