@@ -13,7 +13,7 @@ import {
 
 // ─── Products ─────────────────────────────────────────────
 export function useProducts(initialFallback = []) {
-  const [products, setProducts] = useState(initialFallback)
+  const [products, setProducts] = useState([])
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState(null)
 
@@ -22,12 +22,12 @@ export function useProducts(initialFallback = []) {
     setError(null)
     try {
       const rows = await fetchProducts()
-      setProducts(rows)
+      setProducts(rows.length ? rows : initialFallback)
       console.log('✅ useProducts: loaded', rows.length, 'products from Supabase')
     } catch (e) {
       console.error('❌ useProducts failed, showing fallback data:', e.message)
       setError(e.message)
-      // Keep fallback — don't overwrite with empty
+      setProducts(initialFallback)
     } finally {
       setLoading(false)
     }
@@ -57,13 +57,13 @@ export function useProducts(initialFallback = []) {
 
 // ─── Categories ───────────────────────────────────────────
 export function useCategories(initialFallback = []) {
-  const [categories, setCategories] = useState(initialFallback)
+  const [categories, setCategories] = useState([])
   const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
     fetchCategories()
-      .then(data => { setCategories(data); console.log('✅ useCategories:', data.length, 'rows') })
-      .catch(e  => { console.error('❌ useCategories failed:', e.message) })
+      .then(data => { setCategories(data.length ? data : initialFallback); console.log('✅ useCategories:', data.length, 'rows') })
+      .catch(e  => { console.error('❌ useCategories failed:', e.message); setCategories(initialFallback) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -85,13 +85,13 @@ export function useCategories(initialFallback = []) {
 
 // ─── Tags ─────────────────────────────────────────────────
 export function useTags(initialFallback = []) {
-  const [tags, setTags]         = useState(initialFallback)
+  const [tags, setTags]         = useState([])
   const [loading, setLoading]   = useState(true)
 
   useEffect(() => {
     fetchTags()
-      .then(data => { setTags(data); console.log('✅ useTags:', data.length, 'rows') })
-      .catch(e  => { console.error('❌ useTags failed:', e.message) })
+      .then(data => { setTags(data.length ? data : initialFallback); console.log('✅ useTags:', data.length, 'rows') })
+      .catch(e  => { console.error('❌ useTags failed:', e.message); setTags(initialFallback) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -113,13 +113,13 @@ export function useTags(initialFallback = []) {
 
 // ─── Plans ────────────────────────────────────────────────
 export function usePlans(initialFallback = []) {
-  const [plans, setPlans]       = useState(initialFallback)
+  const [plans, setPlans]       = useState([])
   const [loading, setLoading]   = useState(true)
 
   useEffect(() => {
     fetchPlans()
-      .then(data => { setPlans(data); console.log('✅ usePlans:', data.length, 'rows') })
-      .catch(e  => { console.error('❌ usePlans failed:', e.message) })
+      .then(data => { setPlans(data.length ? data : initialFallback); console.log('✅ usePlans:', data.length, 'rows') })
+      .catch(e  => { console.error('❌ usePlans failed:', e.message); setPlans(initialFallback) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -136,13 +136,13 @@ export function usePlans(initialFallback = []) {
 
 // ─── Users / Profiles ─────────────────────────────────────
 export function useProfiles(initialFallback = []) {
-  const [users, setUsers]       = useState(initialFallback)
+  const [users, setUsers]       = useState([])
   const [loading, setLoading]   = useState(true)
 
   useEffect(() => {
     fetchProfiles()
-      .then(data => { setUsers(data); console.log('✅ useProfiles:', data.length, 'rows') })
-      .catch(e  => { console.error('❌ useProfiles failed:', e.message) })
+      .then(data => { setUsers(data.length ? data : initialFallback); console.log('✅ useProfiles:', data.length, 'rows') })
+      .catch(e  => { console.error('❌ useProfiles failed:', e.message); setUsers(initialFallback) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -159,13 +159,13 @@ export function useProfiles(initialFallback = []) {
 
 // ─── Orders ───────────────────────────────────────────────
 export function useOrders(initialFallback = []) {
-  const [orders, setOrders]     = useState(initialFallback)
+  const [orders, setOrders]     = useState([])
   const [loading, setLoading]   = useState(true)
 
   useEffect(() => {
     fetchOrders()
-      .then(data => { setOrders(data); console.log('✅ useOrders:', data.length, 'rows') })
-      .catch(e  => { console.error('❌ useOrders failed:', e.message) })
+      .then(data => { setOrders(data.length ? data : initialFallback); console.log('✅ useOrders:', data.length, 'rows') })
+      .catch(e  => { console.error('❌ useOrders failed:', e.message); setOrders(initialFallback) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -213,13 +213,13 @@ export function useFeatureFlags(defaultFlags = {}) {
 
 // ─── Custom Fields ────────────────────────────────────────
 export function useCustomFields(initialFallback = []) {
-  const [customFields, setCustomFields] = useState(initialFallback)
+  const [customFields, setCustomFields] = useState([])
   const [loading, setLoading]           = useState(true)
 
   useEffect(() => {
     fetchCustomFields()
-      .then(data => { setCustomFields(data); console.log('✅ useCustomFields:', data.length, 'rows') })
-      .catch(e  => { console.error('❌ useCustomFields failed:', e.message) })
+      .then(data => { setCustomFields(data.length ? data : initialFallback); console.log('✅ useCustomFields:', data.length, 'rows') })
+      .catch(e  => { console.error('❌ useCustomFields failed:', e.message); setCustomFields(initialFallback) })
       .finally(() => setLoading(false))
   }, [])
 

@@ -274,6 +274,22 @@ function AdminLogin({ onLogin }) {
   );
 }
 
+
+/* ─── Skeleton Loader ─── */
+function SkeletonRows({ cols = "2fr 1fr 1fr 1fr 1fr", count = 6 }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} style={{ display: "grid", gridTemplateColumns: cols, gap: "0.75rem", padding: "0.9rem 1.5rem", borderBottom: `1px solid #ffe0c8`, alignItems: "center" }}>
+          {cols.split(" ").map((_, j) => (
+            <div key={j} style={{ height: "14px", borderRadius: "6px", background: `linear-gradient(90deg, #fff3ea, #ffe8d6, #fff3ea)`, backgroundSize: "200% 100%", animation: `shimmer 1.4s ease-in-out infinite`, animationDelay: `${i * 0.06}s`, width: j === 0 ? "80%" : j === cols.split(" ").length - 1 ? "60%" : "70%" }} />
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
 /* ─── Tag Badge ─── */
 function TagBadge({ tag, small }) {
   if (!tag) return null;
@@ -290,16 +306,15 @@ export default function AdminPortal() {
     try { const s = sessionStorage.getItem('rc_admin_session'); return s ? JSON.parse(s) : null; } catch { return null; }
   });
   const [activeSection, setActiveSection] = useState("dashboard");
-  const { categories, save: saveCategory, remove: removeCategory } = useCategories(initialCategories);
-  const { products, setProducts, add: addProduct, update: updateProductDb, remove: removeProduct, refresh: refreshProducts } = useProducts(initialProducts);
-  const { plans, save: savePlanDb } = usePlans(initialPlans);
-  const { users, save: saveUserDb } = useProfiles(initialUsers);
-  const { tags, setTags, save: saveTagDb, remove: removeTagDb } = useTags(initialTags);
+  const { categories, loading: loadingCategories, save: saveCategory, remove: removeCategory } = useCategories(initialCategories);
+  const { products, setProducts, loading: loadingProducts, add: addProduct, update: updateProductDb, remove: removeProduct, refresh: refreshProducts } = useProducts(initialProducts);
+  const { plans, loading: loadingPlans, save: savePlanDb } = usePlans(initialPlans);
+  const { users, setUsers, loading: loadingUsers, save: saveUserDb } = useProfiles(initialUsers);
+  const { tags, setTags, loading: loadingTags, save: saveTagDb, remove: removeTagDb } = useTags(initialTags);
   const { flags: featureFlags, toggle: toggleFlag } = useFeatureFlags(defaultFlags);
-  const { customFields, save: saveCustomFieldDb, remove: removeCustomFieldDb } = useCustomFields(initialCustomFields);
-  const { orders } = useOrders(initialOrders);
+  const { customFields, loading: loadingCustomFields, save: saveCustomFieldDb, remove: removeCustomFieldDb } = useCustomFields(initialCustomFields);
+  const { orders, loading: loadingOrders } = useOrders(initialOrders);
   const [modal, setModal] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
   const [formData, setFormData] = useState({});
   const [modalErrors, setModalErrors] = useState({});
   const [notification, setNotification] = useState(null);
@@ -728,8 +743,8 @@ export default function AdminPortal() {
             <span>Tags</span>
             <span>Actions</span>
           </div>
-          {filteredProducts.length === 0 && <div style={{ padding: "3rem", textAlign: "center", color: COLORS.muted }}>No products match your filters</div>}
-          {filteredProducts.slice((pPage-1)*pPerPage, pPage*pPerPage).map(p => {
+          {loadingProducts ? <SkeletonRows cols="2fr 1fr 0.9fr 0.7fr 0.7fr 1.5fr 1.2fr 1.4fr" count={6} /> : filteredProducts.length === 0 && <div style={{ padding: "3rem", textAlign: "center", color: COLORS.muted }}>No products match your filters</div>}
+          {!loadingProducts && filteredProducts.slice((pPage-1)*pPerPage, pPage*pPerPage).map(p => {
             const ownerUser = users.find(u => u.email === p.ownerEmail);
             return (
             <div key={p.id} style={s.tr("2fr 1fr 0.9fr 0.7fr 0.7fr 1.5fr 1.2fr 1.4fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
@@ -933,13 +948,13 @@ export default function AdminPortal() {
             <span>Status</span>
             <span>Actions</span>
           </div>
-          {filteredUsers.length === 0 && <div style={{ padding: "3rem", textAlign: "center", color: COLORS.muted }}>No users match your filters</div>}
+          {loadingUsers ? <SkeletonRows cols="1.8fr 1.6fr 0.7fr 0.6fr 1.8fr 0.7fr 1.5fr" count={6} /> : filteredUsers.length === 0 && <div style={{ padding: "3rem", textAlign: "center", color: COLORS.muted }}>No users match your filters</div>}
           {filteredUsers.slice((uPage-1)*uPerPage, uPage*uPerPage).map(u => (
             <div key={u.id} style={s.tr("2fr 1.8fr 0.8fr 0.7fr 1fr 0.8fr 1.5fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
                 <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: COLORS.accentLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.82rem", flexShrink: 0, fontWeight: 700, color: COLORS.accent }}>{u.name[0]}</div>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: "0.88rem", color: COLORS.accent, cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted" }} onClick={() => setSelectedUser(u)}>{u.name}</div>
+                  <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{u.name}</div>
                   <div style={{ display: "flex", gap: "0.3rem" }}>
                     <span style={{ fontSize: "0.65rem", color: u.emailVerified ? COLORS.green : COLORS.red }}>📧{u.emailVerified ? "✓" : "✗"}</span>
                     <span style={{ fontSize: "0.65rem", color: u.phoneVerified ? COLORS.green : COLORS.red }}>📱{u.phoneVerified ? "✓" : "✗"}</span>
@@ -1003,8 +1018,8 @@ export default function AdminPortal() {
             <span>Delivery</span>
             <span>Status</span>
           </div>
-          {filteredOrders.length === 0 && <div style={{ padding: "3rem", textAlign: "center", color: COLORS.muted }}>No orders match your search</div>}
-          {filteredOrders.slice((oPage-1)*oPerPage, oPage*oPerPage).map(order => {
+          {loadingOrders ? <SkeletonRows cols="0.9fr 1.8fr 1.6fr 0.5fr 1fr 1.05fr 1.05fr 1.8fr 1.4fr" count={6} /> : filteredOrders.length === 0 && <div style={{ padding: "3rem", textAlign: "center", color: COLORS.muted }}>No orders match your search</div>}
+          {!loadingOrders && filteredOrders.slice((oPage-1)*oPerPage, oPage*oPerPage).map(order => {
             const orderUser = users.find(u => u.email === oEmail(order));
             const userName = oName(order);
             const deliveryAddr = oAddr(order);
@@ -1946,181 +1961,10 @@ export default function AdminPortal() {
           </div>
         )}
 
-        {/* ═══ USER DETAIL DRAWER ═══ */}
-        {selectedUser && (() => {
-          const u = selectedUser;
-          // Orders where this user rented FROM others
-          const rentedOrders = orders.filter(o =>
-            (o.user_email || o.userEmail || "").toLowerCase() === u.email.toLowerCase()
-          );
-          // Orders on products owned BY this user
-          const ownerOrders = orders.filter(o => {
-            const ownerProduct = products.find(p =>
-              (p.ownerEmail || p.owner_email || "").toLowerCase() === u.email.toLowerCase() &&
-              (p.id === o.productId || p.id === o.product_id || p.name === o.product)
-            );
-            return !!ownerProduct;
-          });
-          const ownerProducts = products.filter(p =>
-            (p.ownerEmail || p.owner_email || "").toLowerCase() === u.email.toLowerCase()
-          );
-
-          const totalRentedSpend   = rentedOrders.reduce((s, o) => s + (o.amount || 0), 0);
-          const grossRevenue       = ownerOrders.reduce((s, o) => s + (o.amount || 0), 0);
-          const commission         = Math.round(grossRevenue * 0.30);
-          const netRevenue         = grossRevenue - commission;
-
-          const statBox = (icon, label, value, color = COLORS.text, sub = null) => (
-            <div style={{ background: COLORS.bg, borderRadius: "12px", padding: "1rem 1.25rem", border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize: "1.3rem", marginBottom: "0.3rem" }}>{icon}</div>
-              <div style={{ fontSize: "1.35rem", fontWeight: 900, color }}>{value}</div>
-              <div style={{ fontSize: "0.72rem", color: COLORS.muted, fontWeight: 600, marginTop: "0.15rem" }}>{label}</div>
-              {sub && <div style={{ fontSize: "0.68rem", color: COLORS.muted, marginTop: "0.2rem" }}>{sub}</div>}
-            </div>
-          );
-
-          return (
-            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 400, display: "flex", justifyContent: "flex-end" }} onClick={() => setSelectedUser(null)}>
-              <div style={{ width: "min(580px, 100vw)", background: COLORS.surface, height: "100%", overflowY: "auto", boxShadow: "-8px 0 40px rgba(0,0,0,0.18)", animation: "slideInRight 0.25s ease" }} onClick={e => e.stopPropagation()}>
-                
-                {/* Header */}
-                <div style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", padding: "1.5rem 1.75rem", color: "#fff", position: "sticky", top: 0, zIndex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                      <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: COLORS.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", fontWeight: 900, color: "#fff", flexShrink: 0 }}>{u.name[0]}</div>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: "1.2rem" }}>{u.name}</div>
-                        <div style={{ opacity: 0.7, fontSize: "0.82rem", marginTop: "0.15rem" }}>{u.email}</div>
-                        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.4rem" }}>
-                          <span style={{ background: u.status === "active" ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)", color: u.status === "active" ? "#6ee7b7" : "#fca5a5", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.68rem", fontWeight: 700 }}>{u.status}</span>
-                          <span style={{ background: "rgba(249,115,22,0.25)", color: "#fdba74", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.68rem", fontWeight: 700 }}>{u.plan}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <button onClick={() => setSelectedUser(null)} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer", color: "#fff", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-                  </div>
-                </div>
-
-                <div style={{ padding: "1.5rem 1.75rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-
-                  {/* Personal Details */}
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "0.78rem", color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>👤 Profile</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", fontSize: "0.85rem" }}>
-                      {[["📱 Phone", u.phone || "—"], ["🏙 City", u.city || "—"], ["📅 Joined", u.joined || "—"], ["🎟 Plan", u.plan || "—"]].map(([k,v]) => (
-                        <div key={k} style={{ background: COLORS.bg, borderRadius: "8px", padding: "0.6rem 0.9rem", border: `1px solid ${COLORS.border}` }}>
-                          <div style={{ fontSize: "0.68rem", color: COLORS.muted, fontWeight: 600 }}>{k}</div>
-                          <div style={{ fontWeight: 700, marginTop: "0.2rem" }}>{v}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.6rem" }}>
-                      <div style={{ flex: 1, background: u.emailVerified ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)", borderRadius: "8px", padding: "0.6rem 0.9rem", border: `1px solid ${u.emailVerified ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}` }}>
-                        <div style={{ fontSize: "0.68rem", color: COLORS.muted, fontWeight: 600 }}>📧 Email</div>
-                        <div style={{ fontWeight: 700, color: u.emailVerified ? COLORS.green : COLORS.red, marginTop: "0.2rem" }}>{u.emailVerified ? "✓ Verified" : "✗ Unverified"}</div>
-                      </div>
-                      <div style={{ flex: 1, background: u.phoneVerified ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)", borderRadius: "8px", padding: "0.6rem 0.9rem", border: `1px solid ${u.phoneVerified ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}` }}>
-                        <div style={{ fontSize: "0.68rem", color: COLORS.muted, fontWeight: 600 }}>📱 Phone</div>
-                        <div style={{ fontWeight: 700, color: u.phoneVerified ? COLORS.green : COLORS.red, marginTop: "0.2rem" }}>{u.phoneVerified ? "✓ Verified" : "✗ Unverified"}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Rental Activity (as renter) */}
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "0.78rem", color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>🛒 Rental Activity (as Renter)</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
-                      {statBox("📦", "Total Orders", rentedOrders.length, COLORS.text)}
-                      {statBox("🟢", "Active", rentedOrders.filter(o => o.status === "active").length, COLORS.green)}
-                      {statBox("💸", "Total Spent", INR(totalRentedSpend), COLORS.red)}
-                    </div>
-                    {rentedOrders.length > 0 && (
-                      <div style={{ marginTop: "0.75rem", background: COLORS.bg, borderRadius: "10px", border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.8fr 0.9fr", gap: "0.5rem", padding: "0.55rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: COLORS.muted, textTransform: "uppercase", borderBottom: `1px solid ${COLORS.border}`, background: "#fff" }}>
-                          <span>Order</span><span>Product</span><span>Days</span><span>Amount</span>
-                        </div>
-                        {rentedOrders.slice(0, 5).map(o => (
-                          <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.8fr 0.9fr", gap: "0.5rem", padding: "0.55rem 1rem", fontSize: "0.8rem", borderBottom: `1px solid ${COLORS.border}` }}>
-                            <span style={{ fontFamily: "monospace", color: COLORS.accent, fontWeight: 700, fontSize: "0.75rem" }}>{o.id}</span>
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>{o.product}</span>
-                            <span>{o.days ?? o.days_count ?? "—"}d</span>
-                            <span style={{ fontWeight: 700, color: COLORS.red }}>{INR(o.amount || 0)}</span>
-                          </div>
-                        ))}
-                        {rentedOrders.length > 5 && <div style={{ padding: "0.5rem 1rem", fontSize: "0.75rem", color: COLORS.muted }}>+{rentedOrders.length - 5} more orders</div>}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Revenue (as owner) */}
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "0.78rem", color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>💰 Revenue (as Product Owner)</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.6rem" }}>
-                      {statBox("📋", "Orders Received", ownerOrders.length, COLORS.text)}
-                      {statBox("💵", "Gross Revenue", INR(grossRevenue), COLORS.blue, "100% total")}
-                      {statBox("🏦", "Platform (30%)", INR(commission), COLORS.red, "Commission")}
-                      {statBox("✅", "Net Earnings", INR(netRevenue), COLORS.green, "70% to owner")}
-                    </div>
-                    {/* Revenue breakdown bar */}
-                    {grossRevenue > 0 && (
-                      <div style={{ marginTop: "0.75rem", background: COLORS.bg, borderRadius: "10px", padding: "1rem", border: `1px solid ${COLORS.border}` }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.5rem" }}>
-                          <span style={{ color: COLORS.green }}>Owner 70% — {INR(netRevenue)}</span>
-                          <span style={{ color: COLORS.red }}>Platform 30% — {INR(commission)}</span>
-                        </div>
-                        <div style={{ height: "10px", borderRadius: "5px", background: `rgba(239,68,68,0.2)`, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: "70%", borderRadius: "5px", background: `linear-gradient(90deg, ${COLORS.green}, #34d399)` }} />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Owner products */}
-                    {ownerProducts.length > 0 && (
-                      <div style={{ marginTop: "0.75rem" }}>
-                        <div style={{ fontSize: "0.72rem", fontWeight: 700, color: COLORS.muted, marginBottom: "0.5rem" }}>🏷 Listed Products ({ownerProducts.length})</div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                          {ownerProducts.map(p => (
-                            <span key={p.id} style={{ background: COLORS.accentLight, color: COLORS.accent, borderRadius: "6px", padding: "0.2rem 0.6rem", fontSize: "0.75rem", fontWeight: 600 }}>{p.name}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {ownerOrders.length > 0 && (
-                      <div style={{ marginTop: "0.75rem", background: COLORS.bg, borderRadius: "10px", border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.8fr 1fr 1fr", gap: "0.5rem", padding: "0.55rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: COLORS.muted, textTransform: "uppercase", borderBottom: `1px solid ${COLORS.border}`, background: "#fff" }}>
-                          <span>Order</span><span>Product</span><span>Days</span><span>Gross</span><span>Net (70%)</span>
-                        </div>
-                        {ownerOrders.slice(0, 5).map(o => (
-                          <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.8fr 1fr 1fr", gap: "0.5rem", padding: "0.55rem 1rem", fontSize: "0.8rem", borderBottom: `1px solid ${COLORS.border}` }}>
-                            <span style={{ fontFamily: "monospace", color: COLORS.accent, fontWeight: 700, fontSize: "0.75rem" }}>{o.id}</span>
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>{o.product}</span>
-                            <span>{o.days ?? "—"}d</span>
-                            <span style={{ fontWeight: 700 }}>{INR(o.amount || 0)}</span>
-                            <span style={{ fontWeight: 800, color: COLORS.green }}>{INR(Math.round((o.amount || 0) * 0.70))}</span>
-                          </div>
-                        ))}
-                        {ownerOrders.length > 5 && <div style={{ padding: "0.5rem 1rem", fontSize: "0.75rem", color: COLORS.muted }}>+{ownerOrders.length - 5} more orders</div>}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div style={{ display: "flex", gap: "0.75rem", paddingBottom: "1rem" }}>
-                    <button style={{ ...s.btn("primary"), flex: 1 }} onClick={() => { setSelectedUser(null); openModal("user", { ...u }); }}>✏️ Edit User</button>
-                    <button style={{ ...s.btn("secondary"), flex: 1 }} onClick={() => setSelectedUser(null)}>Close</button>
-                  </div>
-
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
         <style>{`
           @keyframes spin { to { transform: rotate(360deg); } }
           @keyframes slideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
-          @keyframes slideInRight { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:none; } }
+          @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         `}</style>
       </div>
     </>
