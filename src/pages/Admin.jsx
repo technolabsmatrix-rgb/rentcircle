@@ -2041,21 +2041,27 @@ export default function AdminPortal() {
           const u = selectedUser;
           const isMaster = u.isMasterAdmin;
 
-          // For master admin use pre-computed fields, for regular users compute from orders
-          const rentedOrders = u._rentedOrders || (isMaster ? [] : orders.filter(o =>
-            (o.user_email || o.userEmail || "").toLowerCase() === u.email.toLowerCase()
-          ));
-          const ownerOrders = (u._adminOrders && u._adminOrders.length > 0) ? u._adminOrders : orders.filter(o => {
-            const ownerProd = products.find(p =>
-              ownerEmailVariants.includes((p.ownerEmail || p.owner_email || "").toLowerCase()) &&
-              (String(p.id) === String(o.productId || o.product_id) || p.name === o.product)
-            );
-            return !!ownerProd;
-          });
-          // For admin users match both .co.in and .in variants
+          // Build email variants first (handles both .co.in and .in for admin accounts)
           const ownerEmailVariants = u.isMasterAdmin
-            ? [u.email.toLowerCase(), u.email.toLowerCase().replace("@rentcircle.co.in", "@rentcircle.in").replace("@rentcircle.in", "@rentcircle.co.in"), u.email.toLowerCase().replace(".co.in", ".in")]
+            ? ["master@rentcircle.co.in", "master@rentcircle.in"]
+            : u.email === "admin@rentcircle.co.in"
+            ? ["admin@rentcircle.co.in", "admin@rentcircle.in"]
             : [u.email.toLowerCase()];
+
+          const rentedOrders = u._rentedOrders || orders.filter(o =>
+            ownerEmailVariants.includes((o.user_email || o.userEmail || "").toLowerCase())
+          );
+          const ownerOrders = (() => {
+            const cached = u._adminOrders;
+            if (cached && cached.length > 0) return cached;
+            return orders.filter(o => {
+              const ownerProd = products.find(p =>
+                ownerEmailVariants.includes((p.ownerEmail || p.owner_email || "").toLowerCase()) &&
+                (String(p.id) === String(o.productId || o.product_id) || p.name === o.product)
+              );
+              return !!ownerProd;
+            });
+          })();
           const ownerProducts = products.filter(p =>
             ownerEmailVariants.includes((p.ownerEmail || p.owner_email || "").toLowerCase())
           );
