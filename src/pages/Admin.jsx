@@ -293,12 +293,13 @@ export default function AdminPortal() {
   const { categories, save: saveCategory, remove: removeCategory } = useCategories(initialCategories);
   const { products, setProducts, add: addProduct, update: updateProductDb, remove: removeProduct, refresh: refreshProducts } = useProducts(initialProducts);
   const { plans, save: savePlanDb } = usePlans(initialPlans);
-  const { users, setUsers, save: saveUserDb } = useProfiles(initialUsers);
+  const { users, save: saveUserDb } = useProfiles(initialUsers);
   const { tags, setTags, save: saveTagDb, remove: removeTagDb } = useTags(initialTags);
   const { flags: featureFlags, toggle: toggleFlag } = useFeatureFlags(defaultFlags);
   const { customFields, save: saveCustomFieldDb, remove: removeCustomFieldDb } = useCustomFields(initialCustomFields);
   const { orders } = useOrders(initialOrders);
   const [modal, setModal] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [formData, setFormData] = useState({});
   const [modalErrors, setModalErrors] = useState({});
   const [notification, setNotification] = useState(null);
@@ -923,65 +924,42 @@ export default function AdminPortal() {
             activeFiltersCount={[uPlanFilter, uStatusFilter].filter(Boolean).length}
           />
           <div className="rc-admin-table-wrap">
-          <div style={s.th("1.8fr 1.6fr 0.7fr 0.6fr 1.8fr 0.7fr 1.5fr")}>
+          <div style={s.th("2fr 1.8fr 0.8fr 0.7fr 1fr 0.8fr 1.5fr")}>
             <SortableCol label="Name" field="name" sortField={uSort} sortDir={uDir} onSort={(f,d) => { setUSort(f); setUDir(d); }} />
             <SortableCol label="Email" field="email" sortField={uSort} sortDir={uDir} onSort={(f,d) => { setUSort(f); setUDir(d); }} />
             <SortableCol label="Plan" field="plan" sortField={uSort} sortDir={uDir} onSort={(f,d) => { setUSort(f); setUDir(d); }} />
             <SortableCol label="Rentals" field="rentals" sortField={uSort} sortDir={uDir} onSort={(f,d) => { setUSort(f); setUDir(d); }} />
-            <span>Verified</span>
+            <span>City</span>
             <span>Status</span>
             <span>Actions</span>
           </div>
           {filteredUsers.length === 0 && <div style={{ padding: "3rem", textAlign: "center", color: COLORS.muted }}>No users match your filters</div>}
-          {filteredUsers.slice((uPage-1)*uPerPage, uPage*uPerPage).map(u => {
-            const quickVerify = async (field) => {
-              const newVal = !u[field];
-              // Optimistic update — UI changes instantly
-              setUsers(prev => prev.map(x => x.id === u.id ? { ...x, [field]: newVal } : x));
-              try {
-                await saveUserDb({ ...u, [field]: newVal });
-                showNotif((newVal ? "✓ " : "✗ ") + (field === "emailVerified" ? "Email" : "Phone") + (newVal ? " verified" : " unverified"));
-              } catch(e) {
-                // Rollback on failure
-                setUsers(prev => prev.map(x => x.id === u.id ? { ...x, [field]: u[field] } : x));
-                showNotif("Update failed: " + e.message, "error");
-              }
-            };
-            return (
-            <div key={u.id} style={s.tr("1.8fr 1.6fr 0.7fr 0.6fr 1.8fr 0.7fr 1.5fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
+          {filteredUsers.slice((uPage-1)*uPerPage, uPage*uPerPage).map(u => (
+            <div key={u.id} style={s.tr("2fr 1.8fr 0.8fr 0.7fr 1fr 0.8fr 1.5fr")} onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover} onMouseLeave={e => e.currentTarget.style.background = ""}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
                 <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: COLORS.accentLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.82rem", flexShrink: 0, fontWeight: 700, color: COLORS.accent }}>{u.name[0]}</div>
-                <div style={{ fontWeight: 600, fontSize: "0.88rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: "0.88rem", color: COLORS.accent, cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted" }} onClick={() => setSelectedUser(u)}>{u.name}</div>
+                  <div style={{ display: "flex", gap: "0.3rem" }}>
+                    <span style={{ fontSize: "0.65rem", color: u.emailVerified ? COLORS.green : COLORS.red }}>📧{u.emailVerified ? "✓" : "✗"}</span>
+                    <span style={{ fontSize: "0.65rem", color: u.phoneVerified ? COLORS.green : COLORS.red }}>📱{u.phoneVerified ? "✓" : "✗"}</span>
+                  </div>
+                </div>
               </div>
               <span style={{ color: COLORS.muted, fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</span>
               <span style={{ color: COLORS.accent, fontWeight: 600, fontSize: "0.85rem" }}>{u.plan}</span>
               <span style={{ color: COLORS.gold, fontWeight: 600 }}>{u.rentals}</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  <span style={{ fontSize: "0.72rem", fontWeight: 700, color: u.emailVerified ? COLORS.green : COLORS.red, minWidth: "68px" }}>📧 {u.emailVerified ? "✓ Email" : "✗ Email"}</span>
-                  <button onClick={() => quickVerify("emailVerified")} style={{ ...s.btn(u.emailVerified ? "danger" : "success"), padding: "0.12rem 0.45rem", fontSize: "0.67rem" }}>{u.emailVerified ? "Unverify" : "Verify"}</button>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  <span style={{ fontSize: "0.72rem", fontWeight: 700, color: u.phoneVerified ? COLORS.green : COLORS.red, minWidth: "68px" }}>📱 {u.phoneVerified ? "✓ Phone" : "✗ Phone"}</span>
-                  <button onClick={() => quickVerify("phoneVerified")} style={{ ...s.btn(u.phoneVerified ? "danger" : "success"), padding: "0.12rem 0.45rem", fontSize: "0.67rem" }}>{u.phoneVerified ? "Unverify" : "Verify"}</button>
-                </div>
-              </div>
+              <span style={{ fontSize: "0.82rem" }}>{u.city || "—"}</span>
               <span style={s.badge(u.status)}>{u.status}</span>
               <div style={{ display: "flex", gap: "0.35rem" }}>
                 <button style={{ ...s.btn("secondary"), padding: "0.3rem 0.6rem", fontSize: "0.76rem" }} onClick={() => openModal("user", { ...u })}>Edit</button>
                 <button style={{ ...s.btn("danger"), padding: "0.3rem 0.6rem", fontSize: "0.76rem" }}
-                  onClick={async () => {
-                    const updated = { ...u, status: u.status === "active" ? "suspended" : "active" };
-                    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: updated.status } : x));
-                    try { await saveUserDb(updated); showNotif(u.status === "active" ? "User suspended" : "User reactivated"); }
-                    catch(e) { setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: u.status } : x)); showNotif("Failed: " + e.message, "error"); }
-                  }}>
+                  onClick={() => { setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: x.status === "active" ? "suspended" : "active" } : x)); showNotif(u.status === "active" ? "User suspended" : "User reactivated"); }}>
                   {u.status === "active" ? "Suspend" : "Activate"}
                 </button>
               </div>
             </div>
-            );
-          })}
+          ))}
           </div>{/* end rc-admin-table-wrap */}
           <Pagination total={filteredUsers.length} page={uPage} perPage={uPerPage} onPage={setUPage} onPerPage={(n) => { setUPerPage(n); setUPage(1); }} />
         </div>
@@ -1968,9 +1946,181 @@ export default function AdminPortal() {
           </div>
         )}
 
+        {/* ═══ USER DETAIL DRAWER ═══ */}
+        {selectedUser && (() => {
+          const u = selectedUser;
+          // Orders where this user rented FROM others
+          const rentedOrders = orders.filter(o =>
+            (o.user_email || o.userEmail || "").toLowerCase() === u.email.toLowerCase()
+          );
+          // Orders on products owned BY this user
+          const ownerOrders = orders.filter(o => {
+            const ownerProduct = products.find(p =>
+              (p.ownerEmail || p.owner_email || "").toLowerCase() === u.email.toLowerCase() &&
+              (p.id === o.productId || p.id === o.product_id || p.name === o.product)
+            );
+            return !!ownerProduct;
+          });
+          const ownerProducts = products.filter(p =>
+            (p.ownerEmail || p.owner_email || "").toLowerCase() === u.email.toLowerCase()
+          );
+
+          const totalRentedSpend   = rentedOrders.reduce((s, o) => s + (o.amount || 0), 0);
+          const grossRevenue       = ownerOrders.reduce((s, o) => s + (o.amount || 0), 0);
+          const commission         = Math.round(grossRevenue * 0.30);
+          const netRevenue         = grossRevenue - commission;
+
+          const statBox = (icon, label, value, color = COLORS.text, sub = null) => (
+            <div style={{ background: COLORS.bg, borderRadius: "12px", padding: "1rem 1.25rem", border: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontSize: "1.3rem", marginBottom: "0.3rem" }}>{icon}</div>
+              <div style={{ fontSize: "1.35rem", fontWeight: 900, color }}>{value}</div>
+              <div style={{ fontSize: "0.72rem", color: COLORS.muted, fontWeight: 600, marginTop: "0.15rem" }}>{label}</div>
+              {sub && <div style={{ fontSize: "0.68rem", color: COLORS.muted, marginTop: "0.2rem" }}>{sub}</div>}
+            </div>
+          );
+
+          return (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 400, display: "flex", justifyContent: "flex-end" }} onClick={() => setSelectedUser(null)}>
+              <div style={{ width: "min(580px, 100vw)", background: COLORS.surface, height: "100%", overflowY: "auto", boxShadow: "-8px 0 40px rgba(0,0,0,0.18)", animation: "slideInRight 0.25s ease" }} onClick={e => e.stopPropagation()}>
+                
+                {/* Header */}
+                <div style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", padding: "1.5rem 1.75rem", color: "#fff", position: "sticky", top: 0, zIndex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                      <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: COLORS.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", fontWeight: 900, color: "#fff", flexShrink: 0 }}>{u.name[0]}</div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: "1.2rem" }}>{u.name}</div>
+                        <div style={{ opacity: 0.7, fontSize: "0.82rem", marginTop: "0.15rem" }}>{u.email}</div>
+                        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.4rem" }}>
+                          <span style={{ background: u.status === "active" ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)", color: u.status === "active" ? "#6ee7b7" : "#fca5a5", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.68rem", fontWeight: 700 }}>{u.status}</span>
+                          <span style={{ background: "rgba(249,115,22,0.25)", color: "#fdba74", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.68rem", fontWeight: 700 }}>{u.plan}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={() => setSelectedUser(null)} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer", color: "#fff", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                  </div>
+                </div>
+
+                <div style={{ padding: "1.5rem 1.75rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
+                  {/* Personal Details */}
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: "0.78rem", color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>👤 Profile</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", fontSize: "0.85rem" }}>
+                      {[["📱 Phone", u.phone || "—"], ["🏙 City", u.city || "—"], ["📅 Joined", u.joined || "—"], ["🎟 Plan", u.plan || "—"]].map(([k,v]) => (
+                        <div key={k} style={{ background: COLORS.bg, borderRadius: "8px", padding: "0.6rem 0.9rem", border: `1px solid ${COLORS.border}` }}>
+                          <div style={{ fontSize: "0.68rem", color: COLORS.muted, fontWeight: 600 }}>{k}</div>
+                          <div style={{ fontWeight: 700, marginTop: "0.2rem" }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.6rem" }}>
+                      <div style={{ flex: 1, background: u.emailVerified ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)", borderRadius: "8px", padding: "0.6rem 0.9rem", border: `1px solid ${u.emailVerified ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}` }}>
+                        <div style={{ fontSize: "0.68rem", color: COLORS.muted, fontWeight: 600 }}>📧 Email</div>
+                        <div style={{ fontWeight: 700, color: u.emailVerified ? COLORS.green : COLORS.red, marginTop: "0.2rem" }}>{u.emailVerified ? "✓ Verified" : "✗ Unverified"}</div>
+                      </div>
+                      <div style={{ flex: 1, background: u.phoneVerified ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)", borderRadius: "8px", padding: "0.6rem 0.9rem", border: `1px solid ${u.phoneVerified ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}` }}>
+                        <div style={{ fontSize: "0.68rem", color: COLORS.muted, fontWeight: 600 }}>📱 Phone</div>
+                        <div style={{ fontWeight: 700, color: u.phoneVerified ? COLORS.green : COLORS.red, marginTop: "0.2rem" }}>{u.phoneVerified ? "✓ Verified" : "✗ Unverified"}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Rental Activity (as renter) */}
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: "0.78rem", color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>🛒 Rental Activity (as Renter)</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+                      {statBox("📦", "Total Orders", rentedOrders.length, COLORS.text)}
+                      {statBox("🟢", "Active", rentedOrders.filter(o => o.status === "active").length, COLORS.green)}
+                      {statBox("💸", "Total Spent", INR(totalRentedSpend), COLORS.red)}
+                    </div>
+                    {rentedOrders.length > 0 && (
+                      <div style={{ marginTop: "0.75rem", background: COLORS.bg, borderRadius: "10px", border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.8fr 0.9fr", gap: "0.5rem", padding: "0.55rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: COLORS.muted, textTransform: "uppercase", borderBottom: `1px solid ${COLORS.border}`, background: "#fff" }}>
+                          <span>Order</span><span>Product</span><span>Days</span><span>Amount</span>
+                        </div>
+                        {rentedOrders.slice(0, 5).map(o => (
+                          <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.8fr 0.9fr", gap: "0.5rem", padding: "0.55rem 1rem", fontSize: "0.8rem", borderBottom: `1px solid ${COLORS.border}` }}>
+                            <span style={{ fontFamily: "monospace", color: COLORS.accent, fontWeight: 700, fontSize: "0.75rem" }}>{o.id}</span>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>{o.product}</span>
+                            <span>{o.days ?? o.days_count ?? "—"}d</span>
+                            <span style={{ fontWeight: 700, color: COLORS.red }}>{INR(o.amount || 0)}</span>
+                          </div>
+                        ))}
+                        {rentedOrders.length > 5 && <div style={{ padding: "0.5rem 1rem", fontSize: "0.75rem", color: COLORS.muted }}>+{rentedOrders.length - 5} more orders</div>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Revenue (as owner) */}
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: "0.78rem", color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>💰 Revenue (as Product Owner)</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.6rem" }}>
+                      {statBox("📋", "Orders Received", ownerOrders.length, COLORS.text)}
+                      {statBox("💵", "Gross Revenue", INR(grossRevenue), COLORS.blue, "100% total")}
+                      {statBox("🏦", "Platform (30%)", INR(commission), COLORS.red, "Commission")}
+                      {statBox("✅", "Net Earnings", INR(netRevenue), COLORS.green, "70% to owner")}
+                    </div>
+                    {/* Revenue breakdown bar */}
+                    {grossRevenue > 0 && (
+                      <div style={{ marginTop: "0.75rem", background: COLORS.bg, borderRadius: "10px", padding: "1rem", border: `1px solid ${COLORS.border}` }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.5rem" }}>
+                          <span style={{ color: COLORS.green }}>Owner 70% — {INR(netRevenue)}</span>
+                          <span style={{ color: COLORS.red }}>Platform 30% — {INR(commission)}</span>
+                        </div>
+                        <div style={{ height: "10px", borderRadius: "5px", background: `rgba(239,68,68,0.2)`, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: "70%", borderRadius: "5px", background: `linear-gradient(90deg, ${COLORS.green}, #34d399)` }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Owner products */}
+                    {ownerProducts.length > 0 && (
+                      <div style={{ marginTop: "0.75rem" }}>
+                        <div style={{ fontSize: "0.72rem", fontWeight: 700, color: COLORS.muted, marginBottom: "0.5rem" }}>🏷 Listed Products ({ownerProducts.length})</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                          {ownerProducts.map(p => (
+                            <span key={p.id} style={{ background: COLORS.accentLight, color: COLORS.accent, borderRadius: "6px", padding: "0.2rem 0.6rem", fontSize: "0.75rem", fontWeight: 600 }}>{p.name}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {ownerOrders.length > 0 && (
+                      <div style={{ marginTop: "0.75rem", background: COLORS.bg, borderRadius: "10px", border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.8fr 1fr 1fr", gap: "0.5rem", padding: "0.55rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: COLORS.muted, textTransform: "uppercase", borderBottom: `1px solid ${COLORS.border}`, background: "#fff" }}>
+                          <span>Order</span><span>Product</span><span>Days</span><span>Gross</span><span>Net (70%)</span>
+                        </div>
+                        {ownerOrders.slice(0, 5).map(o => (
+                          <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 0.8fr 1fr 1fr", gap: "0.5rem", padding: "0.55rem 1rem", fontSize: "0.8rem", borderBottom: `1px solid ${COLORS.border}` }}>
+                            <span style={{ fontFamily: "monospace", color: COLORS.accent, fontWeight: 700, fontSize: "0.75rem" }}>{o.id}</span>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>{o.product}</span>
+                            <span>{o.days ?? "—"}d</span>
+                            <span style={{ fontWeight: 700 }}>{INR(o.amount || 0)}</span>
+                            <span style={{ fontWeight: 800, color: COLORS.green }}>{INR(Math.round((o.amount || 0) * 0.70))}</span>
+                          </div>
+                        ))}
+                        {ownerOrders.length > 5 && <div style={{ padding: "0.5rem 1rem", fontSize: "0.75rem", color: COLORS.muted }}>+{ownerOrders.length - 5} more orders</div>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ display: "flex", gap: "0.75rem", paddingBottom: "1rem" }}>
+                    <button style={{ ...s.btn("primary"), flex: 1 }} onClick={() => { setSelectedUser(null); openModal("user", { ...u }); }}>✏️ Edit User</button>
+                    <button style={{ ...s.btn("secondary"), flex: 1 }} onClick={() => setSelectedUser(null)}>Close</button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         <style>{`
           @keyframes spin { to { transform: rotate(360deg); } }
           @keyframes slideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+          @keyframes slideInRight { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:none; } }
         `}</style>
       </div>
     </>

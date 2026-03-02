@@ -55,7 +55,10 @@ function MyOrdersPage({ user, allProducts }) {
     return r;
   }, [orders, statusFilter, search]);
 
-  const totalRevenue   = orders.reduce((s, o) => s + (o.amount || 0), 0);
+  const grossRevenue   = orders.reduce((s, o) => s + (o.amount || 0), 0);
+  const commission     = Math.round(grossRevenue * 0.30);
+  const netRevenue     = grossRevenue - commission;
+  const totalRevenue   = grossRevenue; // keep for compat
   const activeCount    = orders.filter(o => o.status === "active").length;
   const completedCount = orders.filter(o => o.status === "completed").length;
 
@@ -68,11 +71,18 @@ function MyOrdersPage({ user, allProducts }) {
         <p style={{ color:C.muted }}>Orders placed on your listed products</p>
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:"1rem",marginBottom:"2rem" }}>
-        {[{label:"Total Orders",value:orders.length,icon:"📦",color:C.dark},{label:"Active",value:activeCount,icon:"🟢",color:"#10b981"},{label:"Completed",value:completedCount,icon:"✅",color:"#6366f1"},{label:"Revenue",value:`₹${Number(totalRevenue).toLocaleString("en-IN")}`,icon:"💰",color:C.green}].map(s=>(
+        {[
+          {label:"Total Orders",value:orders.length,icon:"📦",color:C.dark,sub:null},
+          {label:"Active",value:activeCount,icon:"🟢",color:"#10b981",sub:null},
+          {label:"Gross Revenue",value:`₹${Number(grossRevenue).toLocaleString("en-IN")}`,icon:"💵",color:C.dark,sub:"100% collected"},
+          {label:"Platform Fee (30%)",value:`₹${Number(commission).toLocaleString("en-IN")}`,icon:"🏦",color:C.red,sub:"Deducted commission"},
+          {label:"Your Earnings (70%)",value:`₹${Number(netRevenue).toLocaleString("en-IN")}`,icon:"💰",color:C.green,sub:"Net payout to you"},
+        ].map(s=>(
           <div key={s.label} style={{ background:"#fff",borderRadius:"16px",padding:"1.25rem 1.5rem",border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
             <div style={{ fontSize:"1.5rem",marginBottom:"0.4rem" }}>{s.icon}</div>
             <div style={{ fontSize:"1.5rem",fontWeight:900,color:s.color }}>{s.value}</div>
             <div style={{ fontSize:"0.78rem",color:C.muted,fontWeight:600,marginTop:"0.2rem" }}>{s.label}</div>
+            {s.sub&&<div style={{ fontSize:"0.7rem",color:C.muted,marginTop:"0.15rem" }}>{s.sub}</div>}
           </div>
         ))}
       </div>
@@ -112,7 +122,11 @@ function MyOrdersPage({ user, allProducts }) {
                   <div style={{ fontFamily:"monospace",fontWeight:700,color:C.dark,fontSize:"0.82rem" }}>{o.id}</div>
                   <div style={{ fontWeight:700,fontSize:"0.88rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{o.product||"—"}</div>
                   <div style={{ fontWeight:600,fontSize:"0.88rem" }}>{o.days??"-"}d</div>
-                  <div style={{ fontWeight:800,color:C.green,fontSize:"0.95rem" }}>₹{Number(o.amount||0).toLocaleString("en-IN")}</div>
+                  <div>
+                    <div style={{ fontWeight:800,color:C.dark,fontSize:"0.92rem" }}>₹{Number(o.amount||0).toLocaleString("en-IN")}</div>
+                    <div style={{ fontSize:"0.7rem",color:C.green,fontWeight:700 }}>+₹{Number(Math.round((o.amount||0)*0.70)).toLocaleString("en-IN")} yours</div>
+                    <div style={{ fontSize:"0.68rem",color:C.muted }}>−₹{Number(Math.round((o.amount||0)*0.30)).toLocaleString("en-IN")} fee</div>
+                  </div>
                   <div>
                     <div style={{ fontSize:"0.78rem",fontWeight:600 }}>{o.start_date||"—"}</div>
                     <div style={{ fontSize:"0.72rem",color:C.muted }}>→ {o.end_date||"—"}</div>
